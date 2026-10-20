@@ -337,10 +337,20 @@ fillForm();renderConnections();renderSessions();renderProfile();renderDiscover()
   $("auth-signup-tab").addEventListener("click",()=>switchMode("signup"));
   $("auth-forgot").addEventListener("click",()=>switchMode(mode==="login"?"forgot":"login"));
   function collegeEmail(email){return /^[^\s@]+@[^\s@]+\.edu$/i.test(email)}
-  function reveal(user){
-   if(!user)return;
+  async function revealVerifiedUser(){
+   // Verify against Supabase Auth, not just a cached session.
+   const {data,error}=await db.auth.getUser();
+   if(error || !data?.user){lock();return false}
+   const user=data.user;
+   if(!user.email_confirmed_at){
+    await db.auth.signOut();
+    lock();
+    notice("Please check your college email and click the verification link before logging in.");
+    return false;
+   }
    if(currentUserId!==user.id){window.sociusSwitchAccount(user);currentUserId=user.id}
    document.body.classList.remove("auth-locked");
+   return true;
   }
   function lock(){currentUserId=null;document.body.classList.add("auth-locked");switchMode("login");}
   $("auth-form").addEventListener("submit",async e=>{
@@ -357,11 +367,12 @@ fillForm();renderConnections();renderSessions();renderProfile();renderDiscover()
      const {data,error}=await db.auth.signUp({email,password,options:{data:{display_name:$("auth-name").value.trim()},emailRedirectTo:location.origin+location.pathname}});
      if(error)throw error;
      if(data.session){await db.auth.signOut();}
-     switchMode("login");notice("Check your college inbox for a confirmation link, then return here to log in.");
+     document.body.classList.add("auth-locked");
+     switchMode("login");notice("Account created! Check your college email and click the verification link. You cannot access Socius until your email is confirmed.");
     }else if(mode==="login"){
      const {data,error}=await db.auth.signInWithPassword({email,password});
      if(error)throw error;
-     reveal(data.user);
+     await revealVerifiedUser();
     }else if(mode==="forgot"){
      const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
      if(error)throw error;
@@ -389,11 +400,11 @@ fillForm();renderConnections();renderSessions();renderProfile();renderDiscover()
      document.body.classList.add("auth-locked");switchMode("recover");return;
     }
     if(event==="SIGNED_OUT"){lock();return}
-    if(session?.user && mode!=="recover")reveal(session.user);
+    if(session?.user && mode!=="recover")void revealVerifiedUser();
    });
    const {data,error}=await db.auth.getSession();
    if(error){notice(error.message,true);return}
-   if(data.session?.user && mode!=="recover")reveal(data.session.user);
+   if(data.session?.user && mode!=="recover")await revealVerifiedUser();
   }
   init();
  })();
