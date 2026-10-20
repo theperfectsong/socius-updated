@@ -374,13 +374,12 @@ fillForm();renderConnections();renderSessions();renderProfile();renderDiscover()
    }catch(err){notice(err.message||"Something went wrong. Please try again.",true)}
    finally{button.disabled=false}
   });
-  $("account-signout").addEventListener("click",async()=>{
+  $("profile-signout").addEventListener("click",async()=>{
    if(!db)return;
    const {error}=await db.auth.signOut();
    if(error){alert("Could not log out: "+error.message);return}
    lock();
   });
-  $("profile-signout").addEventListener("click",()=>$("account-signout").click());
   async function init(){
    if(!window.supabase){notice("Could not load Supabase. Check your internet connection.",true);return}
    db=window.supabase.createClient(PROJECT_URL,PUBLISHABLE_KEY);
