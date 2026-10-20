@@ -249,5 +249,15 @@ $("add-samples").addEventListener("click",()=>{const samples=[
 fillForm();renderConnections();renderSessions();renderProfile();renderDiscover();
 })();
 </script>
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+  const { createClient } = supabase;
+
+  const db = createClient(
+    "https://bsihcoivmzdmwlfxbrct.supabase.co",
+    "sb_publishable_l7n7CVwgWDQXBfXYsH_-GA_X4Ld9GpA"
+  );
+</script>
 </body>
 </html>
