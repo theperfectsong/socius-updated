@@ -374,7 +374,8 @@ fillForm();renderConnections();renderSessions();renderProfile();renderDiscover()
    }catch(err){notice(err.message||"Something went wrong. Please try again.",true)}
    finally{button.disabled=false}
   });
-  $("profile-signout").addEventListener("click",async()=>{
+  const signoutButton = $("profile-signout");
+  if (signoutButton) signoutButton.addEventListener("click",async()=>{
    if(!db)return;
    const {error}=await db.auth.signOut();
    if(error){alert("Could not log out: "+error.message);return}
