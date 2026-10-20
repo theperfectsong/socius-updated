@@ -45,9 +45,57 @@ input,textarea,select{width:100%;padding:12px;border:1px solid var(--border);bor
 
 @media(max-width:760px){body{display:block}aside{width:100%;min-height:auto;padding:14px;gap:14px;border-right:0;border-bottom:1px solid var(--border)}.logo{margin:0 0 12px 3px}.sidebar-footer{display:none}nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.nav-btn{padding:10px;font-size:.9rem}main{max-height:none;padding:24px 15px}.grid{grid-template-columns:1fr}.stat-row{grid-template-columns:repeat(3,minmax(0,1fr))}.stat{padding:11px}.connection-card,.session-card{flex-direction:column}.connection-card .btn-row,.session-card .btn-row{width:100%}.connection-card .btn,.session-card .btn{flex:1}}
 @media(max-width:390px){.stat-row{grid-template-columns:1fr}.stat{display:flex;align-items:center;justify-content:space-between}.stat strong{font-size:1.2rem}}
+
+/* Secure-account entry screen: matches Socius green-and-cream palette */
+body.auth-locked > aside,body.auth-locked > main{display:none!important}
+#auth-screen{display:none;min-height:100vh;width:100%;background:radial-gradient(circle at 15% 20%,#e4eadf 0,transparent 34%),var(--bg);padding:28px 18px;align-items:center;justify-content:center}
+body.auth-locked #auth-screen{display:flex}
+.auth-shell{width:min(100%,950px);display:grid;grid-template-columns:1fr 1fr;background:white;border:1px solid var(--border);border-radius:24px;overflow:hidden;box-shadow:0 20px 60px #193d2b1b}
+.auth-intro{background:linear-gradient(155deg,#234e38,#173624);color:#fff;padding:clamp(28px,5vw,54px);display:flex;flex-direction:column;justify-content:space-between;gap:55px}
+.auth-mark{font-size:1.6rem;font-weight:850;letter-spacing:-.05em}.auth-mark span{color:#d6b36a}
+.auth-intro h1{font-size:clamp(2rem,3.3vw,3rem);line-height:1.12;margin-bottom:16px}.auth-intro p{color:#e1eae1;line-height:1.65}
+.auth-note{border:1px solid #ffffff45;border-radius:12px;padding:14px;color:#e1eae1;font-size:.85rem}
+.auth-panel{padding:clamp(24px,4vw,48px)}.auth-panel h2{font-size:1.6rem;letter-spacing:-.03em}.auth-panel .subtitle{margin-bottom:20px}
+.auth-tabs{display:flex;background:#f0f0e9;border-radius:10px;padding:4px;gap:4px;margin-bottom:24px}
+.auth-tab{flex:1;border:0;border-radius:8px;padding:11px;background:transparent;color:#536459;font-weight:750;cursor:pointer}
+.auth-tab.active{background:white;color:var(--green);box-shadow:0 1px 5px #00000010}
+.auth-panel .form-group{margin-bottom:15px}.auth-panel .btn{width:100%;min-height:44px}
+.auth-inline{background:none;border:0;color:var(--green);font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.auth-feedback{min-height:25px;margin:14px 0;color:var(--green);font-size:.9rem;line-height:1.5}
+.auth-feedback.error{color:var(--danger)}.auth-footer{font-size:.83rem;color:var(--muted);line-height:1.5;margin-top:15px}
+.auth-hidden{display:none!important}
+@media(max-width:720px){.auth-shell{grid-template-columns:1fr;max-width:480px}.auth-intro{gap:14px;padding:25px}.auth-intro h1{font-size:1.65rem}.auth-note{display:none}.auth-panel{padding:25px}}
 </style>
 </head>
-<body>
+<body class="auth-locked">
+<div id="auth-screen" aria-label="Socius student account access">
+ <div class="auth-shell">
+  <div class="auth-intro">
+   <div class="auth-mark">socius <span>✳</span></div>
+   <div><h1>Your people.<br>Your progress.</h1><p>Find tutors, study partners, and a little more confidence in every class.</p></div>
+   <div class="auth-note">✧ A little help. A big difference.<br>Made for students who learn better together.</div>
+  </div>
+  <div class="auth-panel">
+   <h2 id="auth-heading">Welcome back.</h2>
+   <p class="subtitle" id="auth-subheading">Sign in with your college email to continue.</p>
+   <div class="auth-tabs" id="auth-tabs">
+    <button class="auth-tab active" id="auth-login-tab" type="button">Log in</button>
+    <button class="auth-tab" id="auth-signup-tab" type="button">Create account</button>
+   </div>
+   <form id="auth-form">
+    <div class="form-group auth-hidden" id="auth-name-group"><label for="auth-name">Your name</label><input id="auth-name" autocomplete="name" maxlength="60" placeholder="Your first name"></div>
+    <div class="form-group"><label for="auth-email">College email</label><input id="auth-email" type="email" autocomplete="email" placeholder="name@school.edu" required></div>
+    <div class="form-group" id="auth-password-group"><label for="auth-password">Password</label><input id="auth-password" type="password" minlength="8" autocomplete="current-password" placeholder="At least 8 characters" required></div>
+    <div class="form-group auth-hidden" id="auth-confirm-group"><label for="auth-confirm">Confirm password</label><input id="auth-confirm" type="password" autocomplete="new-password" placeholder="Repeat your password"></div>
+    <button class="btn" id="auth-submit" type="submit">Log in to Socius</button>
+   </form>
+   <div id="auth-feedback" class="auth-feedback" role="status" aria-live="polite"></div>
+   <div style="text-align:center"><button class="auth-inline" id="auth-forgot" type="button">Forgot password?</button></div>
+   <p class="auth-footer">Use a college email address ending in <strong>.edu</strong>. Your email must be confirmed before you can sign in. College enrollment verification will require additional server-side setup.</p>
+  </div>
+ </div>
+</div>
+
 <aside>
  <div>
   <div class="logo">socius <span>✳</span></div>
@@ -62,7 +110,7 @@ input,textarea,select{width:100%;padding:12px;border:1px solid var(--border);bor
 </aside>
 <main>
  <section id="view-profile" class="view active">
-  <h1>Make it your own.</h1><p class="subtitle">Find support that fits your classes, campus, and schedule.</p>
+  <div class="btn-row" style="justify-content:flex-end;margin-bottom:12px"><button type="button" class="btn secondary small" id="profile-signout">↪ Log out</button></div><h1>Make it your own.</h1><p class="subtitle">Find support that fits your classes, campus, and schedule.</p>
   <div class="stat-row"><div class="stat"><strong id="stat-connections">0</strong><span>Connections</span></div><div class="stat"><strong id="stat-classes">0</strong><span>Classes listed</span></div><div class="stat"><strong id="stat-sessions">0</strong><span>Study sessions</span></div></div>
   <div class="card"><div class="profile-head"><div class="avatar big-avatar" id="profile-avatar">L</div><div><h2 id="profile-display-name">Luis</h2><p class="muted" id="profile-display-campus">Central Piedmont · Choose a campus</p></div></div>
    <h2>Your study profile</h2>
@@ -127,7 +175,7 @@ input,textarea,select{width:100%;padding:12px;border:1px solid var(--border);bor
 <script>
 (function(){
 "use strict";
-const STORAGE_KEY="socius-app-v1";
+let STORAGE_KEY="socius-app-v1";
 const campuses=["Levine","Central","Harper","Cato","Merancas"];
 const defaultState={
  profile:{name:"Luis",college:"Central Piedmont",campus:"",role:"Both",classes:"",help:"",skills:"",availability:"",bio:""},
@@ -246,18 +294,109 @@ $("add-samples").addEventListener("click",()=>{const samples=[
 {id:"demo-chris",name:"Chris",college:"Central Piedmont",campus:"Cato",role:"Both",classes:"BIO-111, CHM-151",skills:"Biology, Chemistry",help:"Want a small science study group.",availability:"Thursdays after 5 PM",bio:"I prefer whiteboard sessions and shared notes.",demo:true},
 {id:"demo-sam",name:"Sam",college:"Central Piedmont",campus:"Merancas",role:"Study partner",classes:"MAT-171, CHM-151",skills:"Chemistry",help:"Reviewing for upcoming quizzes.",availability:"Friday afternoons",bio:"Looking for focused, low-pressure study time.",demo:true}
 ];let added=0;samples.forEach(p=>{if(!state.people.some(x=>x.id===p.id)){state.people.push(p);added++}});saveState();renderDiscover();$("sample-message").textContent=added?`Added ${added} sample profiles.`:"Sample profiles are already loaded.";setTimeout(()=>{$("sample-message").textContent=""},3000)});
+ window.sociusSwitchAccount = function(user){
+  STORAGE_KEY="socius-app-v1-user-"+user.id;
+  state=loadState();
+  if(!localStorage.getItem(STORAGE_KEY)){
+    state.profile.name=(user.user_metadata&&user.user_metadata.display_name)||"";
+    state.profile.college="Central Piedmont";
+  }
+  fillForm();renderConnections();renderSessions();renderProfile();renderDiscover();nav("profile");
+ };
 fillForm();renderConnections();renderSessions();renderProfile();renderDiscover();
 })();
 </script>
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<script>
-  const { createClient } = supabase;
-
-  const db = createClient(
-    "https://bsihcoivmzdmwlfxbrct.supabase.co",
-    "sb_publishable_l7n7CVwgWDQXBfXYsH_-GA_X4Ld9GpA"
-  );
-</script>
+ <script>
+ (function(){
+  "use strict";
+  const $=id=>document.getElementById(id);
+  const PROJECT_URL="https://bsihcoivmzdmwlfxbrct.supabase.co";
+  const PUBLISHABLE_KEY="sb_publishable_l7n7CVwgWDQXBfXYsH_-GA_X4Ld9GpA";
+  let db,mode="login",currentUserId=null;
+  function notice(msg,isError=false){$("auth-feedback").textContent=msg;$("auth-feedback").classList.toggle("error",isError)}
+  function switchMode(next){
+   mode=next;notice("");
+   $("auth-tabs").classList.toggle("auth-hidden",next==="forgot"||next==="recover");
+   $("auth-login-tab").classList.toggle("active",next==="login");
+   $("auth-signup-tab").classList.toggle("active",next==="signup");
+   $("auth-name-group").classList.toggle("auth-hidden",next!=="signup");
+   $("auth-confirm-group").classList.toggle("auth-hidden",next!=="signup"&&next!=="recover");
+   $("auth-email").closest(".form-group").classList.toggle("auth-hidden",next==="recover");
+   $("auth-password-group").classList.toggle("auth-hidden",next==="forgot");
+   $("auth-email").required=next!=="recover";
+   $("auth-name").required=next==="signup";
+   $("auth-confirm").required=next==="signup"||next==="recover";
+   $("auth-password").required=next!=="forgot";
+   $("auth-password").autocomplete=(next==="signup"||next==="recover")?"new-password":"current-password";
+   const headings={login:["Welcome back.","Sign in with your college email to continue.","Log in to Socius"],signup:["Let's get started.","Create your Socius student account.","Create account"],forgot:["Reset your password.","We'll email you a password reset link.","Send reset email"],recover:["Choose a new password.","Enter and confirm your new password.","Save new password"]};
+   $("auth-heading").textContent=headings[next][0];$("auth-subheading").textContent=headings[next][1];$("auth-submit").textContent=headings[next][2];
+   $("auth-forgot").textContent=next==="login"?"Forgot password?":"Back to log in";
+  }
+  $("auth-login-tab").addEventListener("click",()=>switchMode("login"));
+  $("auth-signup-tab").addEventListener("click",()=>switchMode("signup"));
+  $("auth-forgot").addEventListener("click",()=>switchMode(mode==="login"?"forgot":"login"));
+  function collegeEmail(email){return /^[^\s@]+@[^\s@]+\.edu$/i.test(email)}
+  function reveal(user){
+   if(!user)return;
+   if(currentUserId!==user.id){window.sociusSwitchAccount(user);currentUserId=user.id}
+   document.body.classList.remove("auth-locked");
+  }
+  function lock(){currentUserId=null;document.body.classList.add("auth-locked");switchMode("login");}
+  $("auth-form").addEventListener("submit",async e=>{
+   e.preventDefault();
+   if(!db){notice("Supabase is not available. Check your internet connection and try again.",true);return}
+   const email=$("auth-email").value.trim().toLowerCase();
+   const password=$("auth-password").value;
+   const confirm=$("auth-confirm").value;
+   if(mode!=="recover"&&!collegeEmail(email)){notice("Please enter a valid .edu college email address.",true);return}
+   if((mode==="signup"||mode==="recover")&&password!==confirm){notice("Passwords do not match.",true);return}
+   const button=$("auth-submit");button.disabled=true;notice("Working on it…");
+   try{
+    if(mode==="signup"){
+     const {data,error}=await db.auth.signUp({email,password,options:{data:{display_name:$("auth-name").value.trim()},emailRedirectTo:location.origin+location.pathname}});
+     if(error)throw error;
+     if(data.session){await db.auth.signOut();}
+     switchMode("login");notice("Check your college inbox for a confirmation link, then return here to log in.");
+    }else if(mode==="login"){
+     const {data,error}=await db.auth.signInWithPassword({email,password});
+     if(error)throw error;
+     reveal(data.user);
+    }else if(mode==="forgot"){
+     const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+     if(error)throw error;
+     notice("If an account exists for this email, you'll receive a password reset link.");
+    }else if(mode==="recover"){
+     const {error}=await db.auth.updateUser({password});
+     if(error)throw error;
+     await db.auth.signOut();lock();notice("Password updated. Please log in with your new password.");
+    }
+   }catch(err){notice(err.message||"Something went wrong. Please try again.",true)}
+   finally{button.disabled=false}
+  });
+  $("account-signout").addEventListener("click",async()=>{
+   if(!db)return;
+   const {error}=await db.auth.signOut();
+   if(error){alert("Could not log out: "+error.message);return}
+   lock();
+  });
+  $("profile-signout").addEventListener("click",()=>$("account-signout").click());
+  async function init(){
+   if(!window.supabase){notice("Could not load Supabase. Check your internet connection.",true);return}
+   db=window.supabase.createClient(PROJECT_URL,PUBLISHABLE_KEY);
+   db.auth.onAuthStateChange((event,session)=>{
+    if(event==="PASSWORD_RECOVERY"){
+     document.body.classList.add("auth-locked");switchMode("recover");return;
+    }
+    if(event==="SIGNED_OUT"){lock();return}
+    if(session?.user && mode!=="recover")reveal(session.user);
+   });
+   const {data,error}=await db.auth.getSession();
+   if(error){notice(error.message,true);return}
+   if(data.session?.user && mode!=="recover")reveal(data.session.user);
+  }
+  init();
+ })();
+ </script>
 </body>
 </html>
