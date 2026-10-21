@@ -160,21 +160,21 @@ body.auth-locked #auth-screen{display:flex}
    <div class="btn-row" style="justify-content:center;margin-bottom:18px"><button class="btn secondary" id="undo-swipe">Undo last swipe</button></div>
    <div id="discover-empty" class="placeholder hidden"><strong>You're all caught up!</strong>You've seen all available student profiles for these filters. Try refreshing or changing your filters.</div>
   </div>
-   <div class="card" style="margin-top:20px"><h2>Real student profiles</h2><p class="muted" style="line-height:1.5;margin-bottom:14px">Discover loads profiles saved by other students in Supabase. Likes and mutual connections are saved in Supabase. Refresh to see new matches. Study plans remain on this device.</p><button class="btn secondary" id="refresh-students" type="button">↻ Refresh students</button><div id="discover-status" class="message" role="status" aria-live="polite"></div></div>
+   <div class="card" style="margin-top:20px"><h2>Real student profiles</h2><p class="muted" style="line-height:1.5;margin-bottom:14px">Discover loads profiles saved by other students in Supabase. Likes and mutual connections are saved in Supabase. Refresh to see new matches. Study plans are shared through Supabase.</p><button class="btn secondary" id="refresh-students" type="button">↻ Refresh students</button><div id="discover-status" class="message" role="status" aria-live="polite"></div></div>
  </section>
  <section id="view-connections" class="view">
   <h1>My connections</h1><p class="subtitle">Students you’ve connected with for tutoring and study sessions.</p>
   <div id="connections-list" class="card"></div>
  </section>
  <section id="view-study-plans" class="view">
-  <h1>Study plans</h1><p class="subtitle">Turn your connections into a plan and make your next study session count.</p>
-  <div class="card"><h2>Schedule a study session</h2><form id="session-form">
+  <h1>Study plans</h1><p class="subtitle">Invite matched students and manage shared study sessions. Invitations are stored in Supabase, not just on this device.</p>
+  <div class="card"><h2>Invite a match to study</h2><form id="session-form">
    <div class="grid"><div class="form-group"><label for="session-person">Study with</label><select id="session-person" required><option value="">Choose a connection</option></select></div><div class="form-group"><label for="session-class">Class or subject</label><input id="session-class" placeholder="e.g. MAT-171" required></div></div>
    <div class="grid"><div class="form-group"><label for="session-date">Date</label><input id="session-date" type="date" required></div><div class="form-group"><label for="session-time">Time</label><input id="session-time" type="time" required></div></div>
    <div class="grid"><div class="form-group"><label for="session-location">Where / meeting link</label><input id="session-location" placeholder="e.g. Library, room 204"></div><div class="form-group"><label for="session-goal">Goal (optional)</label><input id="session-goal" placeholder="e.g. Review chapter 4"></div></div>
-   <button class="btn" type="submit">Create study plan</button><div id="session-message" class="message" role="status"></div>
+   <button class="btn" type="submit">Send invitation</button><div id="session-message" class="message" role="status"></div>
   </form></div>
-  <div class="section-row"><h2>Upcoming and saved sessions</h2></div><div class="card" id="sessions-list"></div>
+  <div class="section-row"><h2>Shared study sessions <span class="tag">Step 7 · Online</span></h2><button type="button" class="btn secondary small" id="refresh-sessions">↻ Refresh</button></div><div id="sessions-status" class="message" role="status" aria-live="polite"></div><div class="card" id="sessions-list"></div>
  </section>
  <section id="view-messages" class="view">
   <h1>Messages</h1><p class="subtitle">Chat privately with students you've matched with.</p>
@@ -210,10 +210,10 @@ function list(value){return String(value||"").split(",").map(x=>x.trim().toLower
 function initials(name){return String(name||"?").trim().charAt(0).toUpperCase()||"?"}
 function findPerson(id){return state.people.find(p=>p.id===id)}
 function connected(id){return state.connections.includes(id)}
-function nav(view){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.view===view));if(view==="discover")void loadRealStudents();if(view==="connections")void refreshMatches();if(view==="messages")void openMessages();if(view==="study-plans")renderSessions();window.scrollTo({top:0,behavior:"smooth"})}
+function nav(view){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.view===view));if(view==="discover")void loadRealStudents();if(view==="connections")void refreshMatches();if(view==="messages")void openMessages();if(view==="study-plans")void loadSharedSessions();window.scrollTo({top:0,behavior:"smooth"})}
 document.querySelectorAll(".nav-btn").forEach(b=>b.addEventListener("click",()=>nav(b.dataset.view)));
 function fillForm(){const p=state.profile;["name","college","campus","role","classes","help","skills","availability","bio"].forEach(k=>$(k).value=p[k]||"");renderProfile()}
-function renderProfile(){const p=state.profile;const name=p.name||"Student";$("sidebar-name").textContent=name;$("sidebar-avatar").textContent=initials(name);$("profile-avatar").textContent=initials(name);$("profile-display-name").textContent=name;$("profile-display-campus").textContent=[p.college,p.campus?p.campus+" campus":"Choose a campus"].filter(Boolean).join(" · ");$("stat-connections").textContent=state.connections.length;$("stat-classes").textContent=list(p.classes).length;$("stat-sessions").textContent=state.sessions.length;$("connection-count").textContent=state.connections.length?`(${state.connections.length})`:""}
+function renderProfile(){const p=state.profile;const name=p.name||"Student";$("sidebar-name").textContent=name;$("sidebar-avatar").textContent=initials(name);$("profile-avatar").textContent=initials(name);$("profile-display-name").textContent=name;$("profile-display-campus").textContent=[p.college,p.campus?p.campus+" campus":"Choose a campus"].filter(Boolean).join(" · ");$("stat-connections").textContent=state.connections.length;$("stat-classes").textContent=list(p.classes).length;$("stat-sessions").textContent=sharedSessions.filter(x=>x.status==="accepted").length;$("connection-count").textContent=state.connections.length?`(${state.connections.length})`:""}
 // Profile records live in Supabase. Demo swipes and study plans still use local storage.
 async function saveStudentProfile(profile){
  const db=window.sociusDb;
@@ -485,10 +485,63 @@ $("clear-filters").addEventListener("click",()=>{$("filter-campus").value="";$("
  }));
 }
 function startPlan(id){if(!connected(id))return;nav("study-plans");$("session-person").value=id;const p=findPerson(id);if(p){$("session-class").value=list(state.profile.classes).find(c=>list(p.classes).includes(c))||list(p.classes)[0]||""}$("session-class").focus()}
-$("session-form").addEventListener("submit",e=>{e.preventDefault();const date=$("session-date").value,time=$("session-time").value;if(date<todayString()){ $("session-message").textContent="Please choose today or a future date.";return}state.sessions.push({id:uid(),personId:$("session-person").value,className:$("session-class").value.trim(),date,time,location:$("session-location").value.trim(),goal:$("session-goal").value.trim(),created:Date.now()});saveState();$("session-message").textContent="✓ Study session saved.";e.target.reset();renderSessions();renderProfile();setTimeout(()=>{$("session-message").textContent=""},2500)});
+let sharedSessions=[];
+let sharedSessionsRequest=0;
 function todayString(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
-function uid(){return "s"+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
-function renderSessions(){const select=$("session-person"),old=select.value,people=state.connections.map(findPerson).filter(Boolean);select.innerHTML='<option value="">Choose a connection</option>'+people.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");if(people.some(p=>p.id===old))select.value=old;const sessions=[...state.sessions].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));$("sessions-list").innerHTML=sessions.length?sessions.map(s=>{const p=findPerson(s.personId);return `<div class="session-card"><div class="session-info"><h3>${esc(s.className)} with ${esc(p?p.name:"Former connection")}</h3><p>${esc(s.date)} at ${esc(s.time)}${s.location?" · "+esc(s.location):""}</p>${s.goal?`<p>Goal: ${esc(s.goal)}</p>`:""}</div><button class="btn danger small" data-delete-session="${esc(s.id)}">Delete</button></div>`}).join(""):'<div class="placeholder"><strong>No study sessions yet</strong>Connect with someone, then use the form above to create a study plan.</div>';$("sessions-list").querySelectorAll("[data-delete-session]").forEach(b=>b.addEventListener("click",()=>{if(!confirm("Delete this study session?"))return;state.sessions=state.sessions.filter(s=>s.id!==b.dataset.deleteSession);saveState();renderSessions();renderProfile()}))}
+function sessionPartner(s,me){return s.creator_id===me?s.invitee_id:s.creator_id}
+async function loadSharedSessions(){
+ const request=++sharedSessionsRequest;
+ const status=$("sessions-status");status.textContent="Loading shared study sessions…";
+ try{
+  const {db,user}=await verifiedAccount();
+  const {data,error}=await db.from("study_sessions").select("id,creator_id,invitee_id,class_name,session_date,session_time,location,goal,status,created_at").or(`creator_id.eq.${user.id},invitee_id.eq.${user.id}`).order("session_date",{ascending:true}).order("session_time",{ascending:true});
+  if(error)throw error;
+  if(request!==sharedSessionsRequest)return;
+  sharedSessions=data||[];
+  renderSessions();renderProfile();
+  status.textContent=`${sharedSessions.length} shared study session${sharedSessions.length===1?"":"s"} found.`;
+ }catch(err){if(request!==sharedSessionsRequest)return;sharedSessions=[];renderSessions();renderProfile();status.textContent="Could not load shared sessions from Supabase: "+(err.message||"Unknown error")+". Check that the Step 7 SQL was run successfully.";console.error("Study session load failed",err)}
+}
+$("refresh-sessions").addEventListener("click",()=>void loadSharedSessions());
+$("session-form").addEventListener("submit",async e=>{
+ e.preventDefault();const msg=$("session-message");const btn=e.submitter||e.target.querySelector('button[type="submit"]');
+ const date=$("session-date").value,time=$("session-time").value,partner=$("session-person").value;
+ if(!date||!time||date<todayString()){msg.textContent="Choose today or a future date and time.";return}
+ if(!connected(partner)){msg.textContent="Please select a current mutual match.";return}
+ btn.disabled=true;msg.textContent="Sending invitation…";
+ try{
+  const {db,user}=await verifiedAccount();
+  const {error}=await db.from("study_sessions").insert({creator_id:user.id,invitee_id:partner,class_name:$("session-class").value.trim(),session_date:date,session_time:time,location:$("session-location").value.trim(),goal:$("session-goal").value.trim()});
+  if(error)throw error;
+  msg.textContent="✓ Invitation saved to Supabase! Your match can accept or decline it.";
+  e.target.reset();await loadSharedSessions();
+ }catch(err){msg.textContent="Could not send invitation: "+(err.message||"Unknown error");console.error("Session invitation failed",err)}
+ finally{btn.disabled=false}
+});
+function renderSessions(){
+ const select=$("session-person"),old=select.value,people=state.connections.map(findPerson).filter(Boolean);
+ select.innerHTML='<option value="">Choose a connection</option>'+people.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
+ if(people.some(p=>p.id===old))select.value=old;
+ const me=window.sociusCurrentUserId;
+ const rows=[...sharedSessions].sort((a,b)=>(a.session_date+a.session_time).localeCompare(b.session_date+b.session_time));
+ $("sessions-list").innerHTML=rows.length?rows.map(s=>{
+  const partner=sessionPartner(s,me),p=findPerson(partner),incoming=s.invitee_id===me;
+  const controls=s.status==="pending"?(incoming?`<button class="btn small" data-session-action="accepted" data-session-id="${esc(s.id)}">Accept</button><button class="btn secondary small" data-session-action="declined" data-session-id="${esc(s.id)}">Decline</button>`:`<button class="btn danger small" data-session-action="cancelled" data-session-id="${esc(s.id)}">Cancel invitation</button>`):s.status==="accepted"?`<button class="btn danger small" data-session-action="cancelled" data-session-id="${esc(s.id)}">Cancel session</button>`:"";
+  const label={pending:incoming?"Invitation received":"Awaiting response",accepted:"Accepted",declined:"Declined",cancelled:"Cancelled"}[s.status]||s.status;
+  return `<div class="session-card"><div class="session-info"><h3>${esc(s.class_name)} with ${esc(p?p.name:"Matched student")}</h3><p>${esc(s.session_date)} at ${esc(s.session_time.slice(0,5))}${s.location?" · "+esc(s.location):""}</p>${s.goal?`<p>Goal: ${esc(s.goal)}</p>`:""}<p><span class="tag">${esc(label)}</span></p></div><div class="btn-row">${controls}</div></div>`;
+ }).join(""):'<div class="placeholder"><strong>No shared sessions yet</strong>Invite a match to study, or wait for an invitation from a match.</div>';
+ $("sessions-list").querySelectorAll("[data-session-action]").forEach(btn=>btn.addEventListener("click",async()=>{
+  const action=btn.dataset.sessionAction,id=btn.dataset.sessionId;
+  if(action==="cancelled"&&!confirm("Cancel this study session?"))return;
+  btn.disabled=true;$("sessions-status").textContent="Updating session…";
+  try{
+   const {db,user}=await verifiedAccount();
+   const {error}=await db.from("study_sessions").update({status:action}).eq("id",id).select("id").single();
+   if(error)throw error;
+   await loadSharedSessions();
+  }catch(err){$("sessions-status").textContent="Could not update session: "+(err.message||"Unknown error");btn.disabled=false}
+ }));
+}
  function setProfileReady(ready){
    profileReady=ready;
    $("profile-form").querySelector('button[type="submit"]').disabled=!ready;
@@ -518,12 +571,12 @@ function renderSessions(){const select=$("session-person"),old=select.value,peop
      $("save-success").textContent="⚠ Could not load your saved profile. Saving is disabled to protect your data: "+(err.message||"Unknown error");
      setProfileReady(false);
    }
-   state.connections=[];state.likes=[];
+   state.connections=[];state.likes=[];sharedSessions=[];window.sociusCurrentUserId=user.id;
    renderConnections();renderSessions();renderProfile();renderDiscover();nav("profile");
-   try{await loadRealStudents()}catch(err){console.error("Could not initialize matching",err)}
+   try{await loadRealStudents();await loadSharedSessions()}catch(err){console.error("Could not initialize matching or sessions",err)}
  };
 
-state.connections=[];state.likes=[];fillForm();setProfileReady(false);renderConnections();renderSessions();renderProfile();renderDiscover();
+state.connections=[];state.likes=[];window.sociusCurrentUserId=null;fillForm();setProfileReady(false);renderConnections();renderSessions();renderProfile();renderDiscover();
 })();
 </script>
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
