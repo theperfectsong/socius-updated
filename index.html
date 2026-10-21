@@ -110,17 +110,17 @@ body.auth-locked #auth-screen{display:flex}
    <button class="nav-btn active" data-view="profile">◎ My profile</button>
   </nav>
  </div>
- <div class="sidebar-footer"><p>✧ A little help. A big difference.</p><small class="muted">Your next “I get it now” moment starts here.</small><div class="user-mini"><div class="avatar" id="sidebar-avatar">L</div><div><strong id="sidebar-name">Luis</strong><div class="muted" style="font-size:.75rem">College student</div></div></div></div>
+ <div class="sidebar-footer"><p>✧ A little help. A big difference.</p><small class="muted">Your next “I get it now” moment starts here.</small><div class="user-mini"><div class="avatar" id="sidebar-avatar">L</div><div><strong id="sidebar-name">Student</strong><div class="muted" style="font-size:.75rem">College student</div></div></div></div>
 </aside>
 <main>
  <section id="view-profile" class="view active">
   <div class="btn-row" style="justify-content:flex-end;margin-bottom:12px"><button type="button" class="btn secondary small" id="profile-signout">↪ Log out</button></div><h1>Make it your own.</h1><p class="subtitle">Find support that fits your classes, campus, and schedule.</p>
   <div class="stat-row"><div class="stat"><strong id="stat-connections">0</strong><span>Connections</span></div><div class="stat"><strong id="stat-classes">0</strong><span>Classes listed</span></div><div class="stat"><strong id="stat-sessions">0</strong><span>Study sessions</span></div></div>
-  <div class="card"><div class="profile-head"><div class="avatar big-avatar" id="profile-avatar">L</div><div><h2 id="profile-display-name">Luis</h2><p class="muted" id="profile-display-campus">Central Piedmont · Choose a campus</p></div></div>
+  <div class="card"><div class="profile-head"><div class="avatar big-avatar" id="profile-avatar">L</div><div><h2 id="profile-display-name">Student</h2><p class="muted" id="profile-display-campus">Central Piedmont · Choose a campus</p></div></div>
    <h2>Your study profile</h2>
    <form id="profile-form">
     <div class="grid">
-     <div class="form-group"><label for="name">Name</label><input id="name" maxlength="60" value="Luis" required></div>
+     <div class="form-group"><label for="name">Name</label><input id="name" maxlength="60" placeholder="Your name" required></div>
      <div class="form-group"><label for="college">College</label><input id="college" maxlength="100" value="Central Piedmont" required></div>
     </div>
     <div class="grid">
@@ -181,8 +181,9 @@ body.auth-locked #auth-screen{display:flex}
 "use strict";
 let STORAGE_KEY="socius-app-v1";
 const campuses=["Levine","Central","Harper","Cato","Merancas"];
+let profileReady=false;
 const defaultState={
- profile:{name:"Luis",college:"Central Piedmont",campus:"",role:"Both",classes:"",help:"",skills:"",availability:"",bio:""},
+ profile:{name:"",college:"Central Piedmont",campus:"",role:"Both",classes:"",help:"",skills:"",availability:"",bio:""},
  people:[],connections:[],sessions:[],likes:[],swiped:[],swipeHistory:[]
 };
 let state=loadState();
@@ -222,6 +223,7 @@ async function loadStudentProfile(){
 }
 $("profile-form").addEventListener("submit",async e=>{
  e.preventDefault();
+ if(!profileReady){$("save-success").textContent="Your profile has not loaded. Please refresh or sign in again before saving.";return;}
  const button=e.submitter||$("profile-form").querySelector('button[type="submit"]');
  const p={};
  ["name","college","campus","role","classes","help","skills","availability","bio"].forEach(k=>p[k]=$(k).value.trim());
@@ -240,7 +242,7 @@ $("profile-form").addEventListener("submit",async e=>{
   $("save-success").textContent="Could not save profile: "+(err.message||"Unknown error");
  }finally{button.disabled=false}
 });
-$("reset-profile").addEventListener("click",()=>{if(!confirm("Reset your profile fields to the original defaults? Your connections and study plans will remain."))return;state.profile={...defaultState.profile};saveState();fillForm();$("save-success").textContent="Fields reset. Click Save profile to update your Supabase profile."});
+$("reset-profile").addEventListener("click",()=>{if(!profileReady){$("save-success").textContent="Wait until your profile loads before resetting.";return}if(!confirm("Reset your profile fields to the original defaults? Your connections and study plans will remain."))return;state.profile={...defaultState.profile};saveState();fillForm();$("save-success").textContent="Fields reset. Click Save profile to update your Supabase profile."});
 function matchScore(person){const mine=list(state.profile.classes),theirs=list(person.classes);const overlap=mine.filter(x=>theirs.includes(x));const mySkills=list(state.profile.skills),theirHelp=list(person.skills);const helps= mySkills.some(x=>theirHelp.includes(x)) || list(state.profile.help).some(x=>theirHelp.some(s=>s.includes(x)||x.includes(s)));let score=0;if(state.profile.campus&&person.campus===state.profile.campus)score+=3;if(overlap.length)score+=overlap.length*4;if(helps)score+=2;return {score,overlap,helps}}
 let currentDiscoverPeople=[];
 let discoverRequest=0;
@@ -475,25 +477,41 @@ $("session-form").addEventListener("submit",e=>{e.preventDefault();const date=$(
 function todayString(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 function uid(){return "s"+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 function renderSessions(){const select=$("session-person"),old=select.value,people=state.connections.map(findPerson).filter(Boolean);select.innerHTML='<option value="">Choose a connection</option>'+people.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");if(people.some(p=>p.id===old))select.value=old;const sessions=[...state.sessions].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));$("sessions-list").innerHTML=sessions.length?sessions.map(s=>{const p=findPerson(s.personId);return `<div class="session-card"><div class="session-info"><h3>${esc(s.className)} with ${esc(p?p.name:"Former connection")}</h3><p>${esc(s.date)} at ${esc(s.time)}${s.location?" · "+esc(s.location):""}</p>${s.goal?`<p>Goal: ${esc(s.goal)}</p>`:""}</div><button class="btn danger small" data-delete-session="${esc(s.id)}">Delete</button></div>`}).join(""):'<div class="placeholder"><strong>No study sessions yet</strong>Connect with someone, then use the form above to create a study plan.</div>';$("sessions-list").querySelectorAll("[data-delete-session]").forEach(b=>b.addEventListener("click",()=>{if(!confirm("Delete this study session?"))return;state.sessions=state.sessions.filter(s=>s.id!==b.dataset.deleteSession);saveState();renderSessions();renderProfile()}))}
+ function setProfileReady(ready){
+   profileReady=ready;
+   $("profile-form").querySelector('button[type="submit"]').disabled=!ready;
+   $("reset-profile").disabled=!ready;
+ }
  window.sociusSwitchAccount = async function(user){
+   setProfileReady(false);
    STORAGE_KEY="socius-app-v1-user-"+user.id;
    state=loadState();
    state.connections=[];state.likes=[];
-   // Never show a previous account's locally cached profile as authoritative.
    state.profile={...defaultState.profile,name:(user.user_metadata&&user.user_metadata.display_name)||""};
+   fillForm();
+   $("save-success").textContent="Loading your saved profile from Supabase…";
    try{
      const profile=await loadStudentProfile();
-     if(profile)state.profile={...state.profile,...profile};
+     if(!profile){
+       // A new student may not have saved a profile yet. No old profile is overwritten.
+       $("save-success").textContent="No saved profile found for this account. Complete your profile and save it.";
+     }else{
+       state.profile={...defaultState.profile,...profile};
+       $("save-success").textContent="✓ Your saved profile was loaded from Supabase.";
+     }
+     fillForm();
+     setProfileReady(true);
    }catch(err){
      console.error("Could not load Supabase profile:",err);
-     $("save-success").textContent="Could not load your saved profile: "+(err.message||"Unknown error");
+     $("save-success").textContent="⚠ Could not load your saved profile. Saving is disabled to protect your data: "+(err.message||"Unknown error");
+     setProfileReady(false);
    }
-   // Clear locally cached matches until Supabase confirms them.
    state.connections=[];state.likes=[];
-   fillForm();renderConnections();renderSessions();renderProfile();renderDiscover();nav("profile");
+   renderConnections();renderSessions();renderProfile();renderDiscover();nav("profile");
    try{await loadRealStudents()}catch(err){console.error("Could not initialize matching",err)}
  };
-state.connections=[];state.likes=[];fillForm();renderConnections();renderSessions();renderProfile();renderDiscover();
+
+state.connections=[];state.likes=[];fillForm();setProfileReady(false);renderConnections();renderSessions();renderProfile();renderDiscover();
 })();
 </script>
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
