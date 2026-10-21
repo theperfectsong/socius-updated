@@ -65,7 +65,7 @@ body.auth-locked #auth-screen{display:flex}
 .auth-feedback.error{color:var(--danger)}.auth-footer{font-size:.83rem;color:var(--muted);line-height:1.5;margin-top:15px}
 .auth-hidden{display:none!important}
 @media(max-width:720px){.auth-shell{grid-template-columns:1fr;max-width:480px}.auth-intro{gap:14px;padding:25px}.auth-intro h1{font-size:1.65rem}.auth-note{display:none}.auth-panel{padding:25px}}
- .chat-layout{display:grid;grid-template-columns:minmax(170px,240px) minmax(0,1fr);gap:20px;min-height:420px}
+ .notice-item{display:flex;gap:12px;align-items:flex-start;padding:16px;border-bottom:1px solid #e7e8e3}.notice-item:last-child{border-bottom:0}.notice-item.unread{background:#f0f5ef}.notice-icon{font-size:1.45rem}.notice-body{flex:1;min-width:0}.notice-body p{color:var(--muted);font-size:.88rem;margin-top:5px}.notice-badge{background:var(--green);color:white;border-radius:999px;padding:1px 7px;font-size:.72rem;margin-left:6px}.chat-layout{display:grid;grid-template-columns:minmax(170px,240px) minmax(0,1fr);gap:20px;min-height:420px}
 .chat-contacts{border-right:1px solid var(--border);padding-right:16px}.chat-contact{display:block;width:100%;padding:12px;text-align:left;background:white;color:var(--green);border:1px solid var(--border);border-radius:9px;margin-bottom:8px;cursor:pointer;font-weight:650}.chat-contact.active{background:#e9eee8;border-color:var(--green)}
 .chat-main{min-width:0;display:flex;flex-direction:column}.chat-history{flex:0 0 340px;height:340px;min-height:0;max-height:340px;overflow-y:auto;overscroll-behavior:contain;background:#f7f7f3;border:1px solid var(--border);border-radius:12px;padding:15px;display:flex;flex-direction:column;gap:9px}.chat-bubble{padding:10px 13px;border-radius:13px;max-width:85%;white-space:pre-wrap;overflow-wrap:anywhere;background:#e5e7eb;align-self:flex-start}.chat-bubble.mine{background:var(--green);color:white;align-self:flex-end}.chat-time{font-size:.7rem;opacity:.7;margin-top:5px}.chat-compose{display:flex;gap:8px;margin-top:12px}.chat-compose input{flex:1;min-width:0}
 @media(max-width:700px){.chat-layout{grid-template-columns:1fr}.chat-contacts{border-right:0;border-bottom:1px solid var(--border);padding:0 0 12px}.chat-history{flex-basis:320px;height:320px;max-height:320px}}
@@ -108,6 +108,7 @@ body.auth-locked #auth-screen{display:flex}
    <button class="nav-btn" data-view="connections">♡ My connections <span id="connection-count"></span></button>
    <button class="nav-btn" data-view="messages">✉ Messages</button>
    <button class="nav-btn" data-view="study-plans">▦ Study plans</button>
+    <button class="nav-btn" data-view="notifications">♧ Notifications <span id="notification-count" class="notice-badge hidden">0</span></button>
    <button class="nav-btn active" data-view="profile">◎ My profile</button>
   </nav>
  </div>
@@ -176,6 +177,12 @@ body.auth-locked #auth-screen{display:flex}
   </form></div>
   <div class="section-row"><h2>Shared study sessions</h2><button type="button" class="btn secondary small" id="refresh-sessions">↻ Refresh</button></div><div id="sessions-status" class="message" role="status" aria-live="polite"></div><div class="card" id="sessions-list"></div>
  </section>
+ <section id="view-notifications" class="view">
+  <h1>Notifications</h1><p class="subtitle">Likes, new matches, messages, and study invitations in one place.</p>
+  <div class="btn-row" style="margin-bottom:14px"><button class="btn secondary small" type="button" id="refresh-notifications">↻ Refresh notifications</button><button class="btn secondary small" type="button" id="read-notifications">Mark all as read</button></div>
+  <div class="message" id="notification-status" role="status" aria-live="polite"></div><div class="card" id="notification-list" style="padding:0;overflow:hidden"></div>
+  <p class="muted" style="font-size:.83rem">Notifications are gathered from your Supabase activity. Read/unread status is saved on this browser for each account. Keep this page open to receive periodic updates; these are not phone push notifications.</p>
+ </section>
  <section id="view-messages" class="view">
   <h1>Messages</h1><p class="subtitle">Chat privately with students you've matched with.</p>
   <div class="card chat-layout">
@@ -210,7 +217,7 @@ function list(value){return String(value||"").split(",").map(x=>x.trim().toLower
 function initials(name){return String(name||"?").trim().charAt(0).toUpperCase()||"?"}
 function findPerson(id){return state.people.find(p=>p.id===id)}
 function connected(id){return state.connections.includes(id)}
-function nav(view){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.view===view));if(view==="discover")void loadRealStudents();if(view==="connections")void refreshMatches();if(view==="messages")void openMessages();if(view==="study-plans")void loadSharedSessions();window.scrollTo({top:0,behavior:"smooth"})}
+function nav(view){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.view===view));if(view==="discover")void loadRealStudents();if(view==="connections")void refreshMatches();if(view==="messages")void openMessages();if(view==="study-plans")void loadSharedSessions();if(view==="notifications")void loadNotifications();window.scrollTo({top:0,behavior:"smooth"})}
 document.querySelectorAll(".nav-btn").forEach(b=>b.addEventListener("click",()=>nav(b.dataset.view)));
 function fillForm(){const p=state.profile;["name","college","campus","role","classes","help","skills","availability","bio"].forEach(k=>$(k).value=p[k]||"");renderProfile()}
 function renderProfile(){const p=state.profile;const name=p.name||"Student";$("sidebar-name").textContent=name;$("sidebar-avatar").textContent=initials(name);$("profile-avatar").textContent=initials(name);$("profile-display-name").textContent=name;$("profile-display-campus").textContent=[p.college,p.campus?p.campus+" campus":"Choose a campus"].filter(Boolean).join(" · ");$("stat-connections").textContent=state.connections.length;$("stat-classes").textContent=list(p.classes).length;$("stat-sessions").textContent=sharedSessions.filter(x=>x.status==="accepted").length;$("connection-count").textContent=state.connections.length?`(${state.connections.length})`:""}
@@ -547,6 +554,61 @@ function renderSessions(){
    $("profile-form").querySelector('button[type="submit"]').disabled=!ready;
    $("reset-profile").disabled=!ready;
  }
+ // Step 8: a notification inbox derived from existing Supabase likes, messages and study sessions.
+ // This requires no new SQL and cannot change existing data. Read state is per-browser/per-account.
+ let notifications=[],notificationsRequest=0,notificationTimer=null,notificationOwner=null;
+ const noticeKey=id=>"socius-notifications-seen-v1-"+id;
+ function seenNotices(){try{return new Set(JSON.parse(localStorage.getItem(noticeKey(notificationOwner))||"[]"))}catch(_){return new Set()}}
+ function saveSeenNotices(ids){if(!notificationOwner)return;try{localStorage.setItem(noticeKey(notificationOwner),JSON.stringify([...ids].slice(-1000)))}catch(err){console.warn("Could not save notification read status",err)}}
+ function noticeName(id){const person=findPerson(id);return person?person.name:"A student"}
+ function renderNotifications(){
+  const seen=seenNotices(),unread=notifications.filter(n=>!seen.has(n.id)).length;
+  $("notification-count").textContent=String(unread);
+  $("notification-count").classList.toggle("hidden",!unread);
+  $("notification-list").innerHTML=notifications.length?notifications.map(n=>`<div class="notice-item ${seen.has(n.id)?"":"unread"}"><span class="notice-icon">${n.icon}</span><div class="notice-body"><strong>${esc(n.title)}</strong><p>${esc(n.description)}</p><p>${esc(new Date(n.when).toLocaleString())}</p></div><button type="button" class="btn secondary small" data-notice-id="${esc(n.id)}">View</button></div>`).join(""):'<div class="placeholder"><strong>Nothing here yet</strong>New likes, matches, messages and study invitations will show up here.</div>';
+  $("notification-list").querySelectorAll("[data-notice-id]").forEach(b=>b.addEventListener("click",()=>{
+   const n=notifications.find(x=>x.id===b.dataset.noticeId);if(!n)return;
+   const seenNow=seenNotices();seenNow.add(n.id);saveSeenNotices(seenNow);renderNotifications();
+   if(n.target==="messages")void openMessages(n.peer);else nav(n.target);
+  }));
+ }
+ async function loadNotifications(silent=false){
+  const request=++notificationsRequest,owner=notificationOwner;
+  if(!owner)return;
+  if(!silent)$("notification-status").textContent="Checking for updates…";
+  try{
+   const {db,user}=await verifiedAccount();if(user.id!==owner)return;
+   const [likesResult,messagesResult,sessionsResult]=await Promise.all([
+    db.from("likes").select("liker_id,liked_id,created_at").or(`liker_id.eq.${owner},liked_id.eq.${owner}`).order("created_at",{ascending:false}).limit(300),
+    db.from("messages").select("id,sender_id,recipient_id,created_at").eq("recipient_id",owner).order("created_at",{ascending:false}).limit(100),
+    db.from("study_sessions").select("id,creator_id,invitee_id,class_name,status,created_at").or(`creator_id.eq.${owner},invitee_id.eq.${owner}`).order("created_at",{ascending:false}).limit(100)
+   ]);
+   for(const result of [likesResult,messagesResult,sessionsResult])if(result.error)throw result.error;
+   if(request!==notificationsRequest||owner!==notificationOwner)return;
+   const likes=likesResult.data||[],sent=new Set(likes.filter(x=>x.liker_id===owner).map(x=>x.liked_id));
+   const incoming=likes.filter(x=>x.liked_id===owner);
+   const next=[];
+   for(const like of incoming){
+    const matched=sent.has(like.liker_id);
+    next.push({id:"like:"+like.liker_id,title:matched?"You have a match!":"Someone liked your profile",description:matched?`You and ${noticeName(like.liker_id)} liked each other.`:`${noticeName(like.liker_id)} liked your profile.`,when:like.created_at,icon:matched?"💚":"♡",target:matched?"connections":"discover"});
+   }
+   for(const m of messagesResult.data||[])next.push({id:"message:"+m.id,title:"New message",description:`${noticeName(m.sender_id)} sent you a message.`,when:m.created_at,icon:"✉",target:"messages",peer:m.sender_id});
+   for(const x of sessionsResult.data||[]){
+    if(x.invitee_id===owner)next.push({id:"session:"+x.id,title:x.status==="pending"?"Study invitation received":"Study invitation updated",description:`${noticeName(x.creator_id)} invited you to study ${x.class_name}. Status: ${x.status}.`,when:x.created_at,icon:"📅",target:"study-plans"});
+    else if(x.status==="accepted"||x.status==="declined")next.push({id:"session-reply:"+x.id+":"+x.status,title:x.status==="accepted"?"Invitation accepted":"Invitation declined",description:`${noticeName(x.invitee_id)} ${x.status} your ${x.class_name} invitation.`,when:x.created_at,icon:x.status==="accepted"?"✓":"↩",target:"study-plans"});
+   }
+   notifications=next.sort((a,b)=>new Date(b.when)-new Date(a.when)).slice(0,200);
+   renderNotifications();
+   if(!silent)$("notification-status").textContent=`${notifications.length} notification${notifications.length===1?"":"s"} found.`;
+  }catch(err){if(request!==notificationsRequest||owner!==notificationOwner)return;$("notification-status").textContent="Could not load notifications: "+(err.message||"Unknown error");console.error("Socius notifications failed",err)}
+ }
+ $("refresh-notifications").addEventListener("click",()=>void loadNotifications());
+ $("read-notifications").addEventListener("click",()=>{const seen=seenNotices();notifications.forEach(n=>seen.add(n.id));saveSeenNotices(seen);renderNotifications();$("notification-status").textContent="All current notifications marked as read on this browser."});
+ function startNotificationPolling(userId){
+  notificationOwner=userId;notifications=[];++notificationsRequest;renderNotifications();
+  if(notificationTimer)clearInterval(notificationTimer);
+  notificationTimer=setInterval(()=>{if(!document.body.classList.contains("auth-locked")&&notificationOwner===userId)void loadNotifications(true)},20000);
+ }
  window.sociusSwitchAccount = async function(user){
    setProfileReady(false);
    STORAGE_KEY="socius-app-v1-user-"+user.id;
@@ -571,9 +633,9 @@ function renderSessions(){
      $("save-success").textContent="⚠ Could not load your saved profile. Saving is disabled to protect your data: "+(err.message||"Unknown error");
      setProfileReady(false);
    }
-   state.connections=[];state.likes=[];sharedSessions=[];window.sociusCurrentUserId=user.id;
+   state.connections=[];state.likes=[];sharedSessions=[];window.sociusCurrentUserId=user.id;startNotificationPolling(user.id);
    renderConnections();renderSessions();renderProfile();renderDiscover();nav("profile");
-   try{await loadRealStudents();await loadSharedSessions()}catch(err){console.error("Could not initialize matching or sessions",err)}
+   try{await loadRealStudents();await loadSharedSessions();await loadNotifications()}catch(err){console.error("Could not initialize matching, sessions or notifications",err)}
  };
 
 state.connections=[];state.likes=[];window.sociusCurrentUserId=null;fillForm();setProfileReady(false);renderConnections();renderSessions();renderProfile();renderDiscover();
