@@ -131,7 +131,7 @@ body.auth-locked #auth-screen{display:flex}
     <div class="btn-row"><button class="btn" type="submit">Save profile</button><button class="btn secondary" type="button" id="reset-profile">Reset profile</button></div><div id="save-success" class="message" role="status"></div>
    </form>
   </div>
-  <p class="muted" style="font-size:.85rem">Your profile is saved in this browser on this device. It is not yet shared with other students.</p>
+  <p class="muted" style="font-size:.85rem">Your profile is saved securely to your Socius account in Supabase when you select Save profile.</p>
  </section>
  <section id="view-discover" class="view">
   <h1>Discover your study people.</h1><p class="subtitle">One profile at a time. Swipe left to like someone and swipe right to pass.</p>
@@ -187,7 +187,7 @@ function loadState(){
  try{const saved=localStorage.getItem(STORAGE_KEY);if(saved){const parsed=JSON.parse(saved);return {...structuredClone(defaultState),...parsed,profile:{...defaultState.profile,...(parsed.profile||{})},people:Array.isArray(parsed.people)?parsed.people:[],connections:Array.isArray(parsed.connections)?parsed.connections:[],sessions:Array.isArray(parsed.sessions)?parsed.sessions:[],likes:Array.isArray(parsed.likes)?parsed.likes:[],swiped:Array.isArray(parsed.swiped)?parsed.swiped:[],swipeHistory:Array.isArray(parsed.swipeHistory)?parsed.swipeHistory:[]}}}catch(e){console.warn("Could not load saved Socius data",e)}
  return structuredClone(defaultState);
 }
-function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));return true}catch(e){console.warn("Could not save Socius data",e);alert("Socius couldn't save data in this browser. Check that local storage is enabled.");return false}}
+function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));return true}catch(e){console.warn("Could not save Socius demo data",e);return false}}
 function esc(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]))}
 function list(value){return String(value||"").split(",").map(x=>x.trim().toLowerCase()).filter(Boolean)}
 function initials(name){return String(name||"?").trim().charAt(0).toUpperCase()||"?"}
@@ -197,8 +197,46 @@ function nav(view){document.querySelectorAll(".view").forEach(v=>v.classList.tog
 document.querySelectorAll(".nav-btn").forEach(b=>b.addEventListener("click",()=>nav(b.dataset.view)));
 function fillForm(){const p=state.profile;["name","college","campus","role","classes","help","skills","availability","bio"].forEach(k=>$(k).value=p[k]||"");renderProfile()}
 function renderProfile(){const p=state.profile;const name=p.name||"Student";$("sidebar-name").textContent=name;$("sidebar-avatar").textContent=initials(name);$("profile-avatar").textContent=initials(name);$("profile-display-name").textContent=name;$("profile-display-campus").textContent=[p.college,p.campus?p.campus+" campus":"Choose a campus"].filter(Boolean).join(" · ");$("stat-connections").textContent=state.connections.length;$("stat-classes").textContent=list(p.classes).length;$("stat-sessions").textContent=state.sessions.length;$("connection-count").textContent=state.connections.length?`(${state.connections.length})`:""}
-$("profile-form").addEventListener("submit",e=>{e.preventDefault();const p={};["name","college","campus","role","classes","help","skills","availability","bio"].forEach(k=>p[k]=$(k).value.trim());if(!p.name){$("save-success").textContent="Please enter your name.";return}state.profile=p;saveState();renderProfile();$("save-success").textContent="✓ Profile saved successfully!";setTimeout(()=>{$("save-success").textContent=""},3000)});
-$("reset-profile").addEventListener("click",()=>{if(!confirm("Reset your profile fields to the original defaults? Your connections and study plans will remain."))return;state.profile={...defaultState.profile};saveState();fillForm();$("save-success").textContent="Profile reset."});
+// Profile records live in Supabase. Demo swipes and study plans still use local storage.
+async function saveStudentProfile(profile){
+ const db=window.sociusDb;
+ if(!db)throw new Error("Supabase is still loading. Please try again.");
+ const {data:{user},error:authError}=await db.auth.getUser();
+ if(authError||!user)throw new Error("Please log in first.");
+ if(!user.email_confirmed_at)throw new Error("Verify your college email before saving a profile.");
+ const {error}=await db.from("profiles").upsert({id:user.id,...profile},{onConflict:"id"});
+ if(error)throw error;
+}
+async function loadStudentProfile(){
+ const db=window.sociusDb;
+ if(!db)throw new Error("Supabase is not connected.");
+ const {data:{user},error:authError}=await db.auth.getUser();
+ if(authError||!user||!user.email_confirmed_at)return null;
+ const {data,error}=await db.from("profiles").select("id,name,college,campus,role,classes,help,skills,availability,bio").eq("id",user.id).maybeSingle();
+ if(error)throw error;
+ return data;
+}
+$("profile-form").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const button=e.submitter||$("profile-form").querySelector('button[type="submit"]');
+ const p={};
+ ["name","college","campus","role","classes","help","skills","availability","bio"].forEach(k=>p[k]=$(k).value.trim());
+ if(!p.name){$("save-success").textContent="Please enter your name.";return}
+ if(!p.campus){$("save-success").textContent="Please select your main campus.";return}
+ button.disabled=true;
+ $("save-success").textContent="Saving profile to Supabase…";
+ try{
+  await saveStudentProfile(p);
+  state.profile=p;
+  saveState(); // Retains current demo feature compatibility only.
+  renderProfile();
+  $("save-success").textContent="✓ Profile saved to your Socius account!";
+ }catch(err){
+  console.error("Socius profile save failed:",err);
+  $("save-success").textContent="Could not save profile: "+(err.message||"Unknown error");
+ }finally{button.disabled=false}
+});
+$("reset-profile").addEventListener("click",()=>{if(!confirm("Reset your profile fields to the original defaults? Your connections and study plans will remain."))return;state.profile={...defaultState.profile};saveState();fillForm();$("save-success").textContent="Fields reset. Click Save profile to update your Supabase profile."});
 function matchScore(person){const mine=list(state.profile.classes),theirs=list(person.classes);const overlap=mine.filter(x=>theirs.includes(x));const mySkills=list(state.profile.skills),theirHelp=list(person.skills);const helps= mySkills.some(x=>theirHelp.includes(x)) || list(state.profile.help).some(x=>theirHelp.some(s=>s.includes(x)||x.includes(s)));let score=0;if(state.profile.campus&&person.campus===state.profile.campus)score+=3;if(overlap.length)score+=overlap.length*4;if(helps)score+=2;return {score,overlap,helps}}
 let currentDiscoverPeople=[];
 function filteredDiscoverPeople(){
@@ -294,14 +332,19 @@ $("add-samples").addEventListener("click",()=>{const samples=[
 {id:"demo-chris",name:"Chris",college:"Central Piedmont",campus:"Cato",role:"Both",classes:"BIO-111, CHM-151",skills:"Biology, Chemistry",help:"Want a small science study group.",availability:"Thursdays after 5 PM",bio:"I prefer whiteboard sessions and shared notes.",demo:true},
 {id:"demo-sam",name:"Sam",college:"Central Piedmont",campus:"Merancas",role:"Study partner",classes:"MAT-171, CHM-151",skills:"Chemistry",help:"Reviewing for upcoming quizzes.",availability:"Friday afternoons",bio:"Looking for focused, low-pressure study time.",demo:true}
 ];let added=0;samples.forEach(p=>{if(!state.people.some(x=>x.id===p.id)){state.people.push(p);added++}});saveState();renderDiscover();$("sample-message").textContent=added?`Added ${added} sample profiles.`:"Sample profiles are already loaded.";setTimeout(()=>{$("sample-message").textContent=""},3000)});
- window.sociusSwitchAccount = function(user){
-  STORAGE_KEY="socius-app-v1-user-"+user.id;
-  state=loadState();
-  if(!localStorage.getItem(STORAGE_KEY)){
-    state.profile.name=(user.user_metadata&&user.user_metadata.display_name)||"";
-    state.profile.college="Central Piedmont";
-  }
-  fillForm();renderConnections();renderSessions();renderProfile();renderDiscover();nav("profile");
+ window.sociusSwitchAccount = async function(user){
+   STORAGE_KEY="socius-app-v1-user-"+user.id;
+   state=loadState();
+   // Never show a previous account's locally cached profile as authoritative.
+   state.profile={...defaultState.profile,name:(user.user_metadata&&user.user_metadata.display_name)||""};
+   try{
+     const profile=await loadStudentProfile();
+     if(profile)state.profile={...state.profile,...profile};
+   }catch(err){
+     console.error("Could not load Supabase profile:",err);
+     $("save-success").textContent="Could not load your saved profile: "+(err.message||"Unknown error");
+   }
+   fillForm();renderConnections();renderSessions();renderProfile();renderDiscover();nav("profile");
  };
 fillForm();renderConnections();renderSessions();renderProfile();renderDiscover();
 })();
@@ -348,7 +391,7 @@ fillForm();renderConnections();renderSessions();renderProfile();renderDiscover()
     notice("Please check your college email and click the verification link before logging in.");
     return false;
    }
-   if(currentUserId!==user.id){window.sociusSwitchAccount(user);currentUserId=user.id}
+   if(currentUserId!==user.id){currentUserId=user.id;await window.sociusSwitchAccount(user)}
    document.body.classList.remove("auth-locked");
    return true;
   }
@@ -395,6 +438,7 @@ fillForm();renderConnections();renderSessions();renderProfile();renderDiscover()
   async function init(){
    if(!window.supabase){notice("Could not load Supabase. Check your internet connection.",true);return}
    db=window.supabase.createClient(PROJECT_URL,PUBLISHABLE_KEY);
+    window.sociusDb=db; // Shared with the profile-saving code above.
    db.auth.onAuthStateChange((event,session)=>{
     if(event==="PASSWORD_RECOVERY"){
      document.body.classList.add("auth-locked");switchMode("recover");return;
