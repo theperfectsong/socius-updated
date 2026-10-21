@@ -144,7 +144,7 @@ body.auth-locked #auth-screen{display:flex}
    <div class="btn-row"><button class="btn" id="apply-filters">Apply filters</button><button class="btn secondary" id="clear-filters">Clear filters</button></div>
   </div>
   <div class="swipe-stage">
-   <div class="swipe-progress" id="swipe-progress">Add sample students to start discovering</div>
+   <div class="swipe-progress" id="swipe-progress">Open Discover to load real students</div>
    <div id="swipe-card-wrap"></div>
    <div class="swipe-actions" id="swipe-actions">
     <button class="swipe-action pass" id="swipe-pass" aria-label="Pass on this student" title="Swipe right to pass">→</button>
@@ -153,9 +153,9 @@ body.auth-locked #auth-screen{display:flex}
    <div class="swipe-hints"><span>← Like</span><span>Pass →</span></div>
    <div class="swipe-feedback" id="swipe-feedback" role="status" aria-live="polite"></div>
    <div class="btn-row" style="justify-content:center;margin-bottom:18px"><button class="btn secondary" id="undo-swipe">Undo last swipe</button></div>
-   <div id="discover-empty" class="placeholder hidden"><strong>You're all caught up!</strong>You've seen everyone in these filters. Change your filters or add more sample students to keep discovering.</div>
+   <div id="discover-empty" class="placeholder hidden"><strong>You're all caught up!</strong>You've seen all available student profiles for these filters. Try refreshing or changing your filters.</div>
   </div>
-  <div class="card" style="margin-top:20px"><h2>Try the demo</h2><p class="muted" style="line-height:1.5;margin-bottom:14px">Socius starts with no other students. Add sample profiles to test swiping, likes, matches, connections, and study plans on this device.</p><button class="btn secondary" id="add-samples">Load sample students</button><span id="sample-message" class="message" role="status"></span></div>
+   <div class="card" style="margin-top:20px"><h2>Real student profiles</h2><p class="muted" style="line-height:1.5;margin-bottom:14px">Discover loads profiles saved by other students in Supabase. Likes and connections are still local in this version; shared matching comes next.</p><button class="btn secondary" id="refresh-students" type="button">↻ Refresh students</button><div id="discover-status" class="message" role="status" aria-live="polite"></div></div>
  </section>
  <section id="view-connections" class="view">
   <h1>My connections</h1><p class="subtitle">Students you’ve connected with for tutoring and study sessions.</p>
@@ -193,7 +193,7 @@ function list(value){return String(value||"").split(",").map(x=>x.trim().toLower
 function initials(name){return String(name||"?").trim().charAt(0).toUpperCase()||"?"}
 function findPerson(id){return state.people.find(p=>p.id===id)}
 function connected(id){return state.connections.includes(id)}
-function nav(view){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.view===view));if(view==="discover")renderDiscover();if(view==="connections")renderConnections();if(view==="study-plans")renderSessions();window.scrollTo({top:0,behavior:"smooth"})}
+function nav(view){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.view===view));if(view==="discover")void loadRealStudents();if(view==="connections")renderConnections();if(view==="study-plans")renderSessions();window.scrollTo({top:0,behavior:"smooth"})}
 document.querySelectorAll(".nav-btn").forEach(b=>b.addEventListener("click",()=>nav(b.dataset.view)));
 function fillForm(){const p=state.profile;["name","college","campus","role","classes","help","skills","availability","bio"].forEach(k=>$(k).value=p[k]||"");renderProfile()}
 function renderProfile(){const p=state.profile;const name=p.name||"Student";$("sidebar-name").textContent=name;$("sidebar-avatar").textContent=initials(name);$("profile-avatar").textContent=initials(name);$("profile-display-name").textContent=name;$("profile-display-campus").textContent=[p.college,p.campus?p.campus+" campus":"Choose a campus"].filter(Boolean).join(" · ");$("stat-connections").textContent=state.connections.length;$("stat-classes").textContent=list(p.classes).length;$("stat-sessions").textContent=state.sessions.length;$("connection-count").textContent=state.connections.length?`(${state.connections.length})`:""}
@@ -239,6 +239,34 @@ $("profile-form").addEventListener("submit",async e=>{
 $("reset-profile").addEventListener("click",()=>{if(!confirm("Reset your profile fields to the original defaults? Your connections and study plans will remain."))return;state.profile={...defaultState.profile};saveState();fillForm();$("save-success").textContent="Fields reset. Click Save profile to update your Supabase profile."});
 function matchScore(person){const mine=list(state.profile.classes),theirs=list(person.classes);const overlap=mine.filter(x=>theirs.includes(x));const mySkills=list(state.profile.skills),theirHelp=list(person.skills);const helps= mySkills.some(x=>theirHelp.includes(x)) || list(state.profile.help).some(x=>theirHelp.some(s=>s.includes(x)||x.includes(s)));let score=0;if(state.profile.campus&&person.campus===state.profile.campus)score+=3;if(overlap.length)score+=overlap.length*4;if(helps)score+=2;return {score,overlap,helps}}
 let currentDiscoverPeople=[];
+let discoverRequest=0;
+async function loadRealStudents(){
+ const request=++discoverRequest;
+ const status=$("discover-status");
+ status.textContent="Loading student profiles…";
+ const db=window.sociusDb;
+ if(!db){status.textContent="Supabase is not connected yet. Try refreshing.";return}
+ try{
+  const {data:{user},error:authError}=await db.auth.getUser();
+  if(authError||!user||!user.email_confirmed_at)throw new Error("Please log in with a verified account.");
+  const {data,error}=await db.from("profiles")
+   .select("id,name,college,campus,role,classes,help,skills,availability,bio")
+   .neq("id",user.id).order("created_at",{ascending:false});
+  if(error)throw error;
+  if(request!==discoverRequest)return;
+  state.people=(data||[]).filter(p=>p.id&&p.name&&p.campus).map(p=>({...p,demo:false}));
+  renderDiscover();
+  status.textContent=state.people.length?`Loaded ${state.people.length} real student profile${state.people.length===1?"":"s"}.`:
+   "No other student profiles are available yet. Have another verified account save a profile, then refresh.";
+ }catch(err){
+  if(request!==discoverRequest)return;
+  state.people=[];
+  renderDiscover();
+  status.textContent="Could not load profiles: "+(err.message||"Unknown error")+". Check the profiles SELECT policy in Supabase.";
+  console.error("Socius Discover load failed",err);
+ }
+}
+$("refresh-students").addEventListener("click",()=>void loadRealStudents());
 function filteredDiscoverPeople(){
  const campus=$("filter-campus").value,subject=$("filter-class").value.trim().toLowerCase(),type=$("filter-type").value;
  let people=state.people.filter(p=>!p.isSelf&&!state.swiped.includes(p.id));
@@ -284,13 +312,7 @@ function swipePerson(id,action){
  let feedback="";
  if(action==="like"){
   if(!state.likes.includes(id))state.likes.push(id);
-  // Demo-only mutual likes let users preview the match flow; real mutual matching needs a shared backend.
-  if(p.demo&&p.likesYou){
-   if(!connected(id))state.connections.push(id);
-   feedback=`🎉 It's a match with ${p.name}! They've liked you too in this demo.`;
-  }else{
-   feedback=`♡ You liked ${p.name}. If they like you back, it'll be a match!`;
-  }
+  feedback=`♡ You liked ${p.name}. This like is saved on this device only until shared matching is enabled.`;
  }else{
   feedback=`You passed on ${p.name}. Here's the next student.`;
  }
@@ -320,18 +342,11 @@ $("filter-campus").addEventListener("change",renderDiscover);
 $("filter-type").addEventListener("change",renderDiscover);
 $("clear-filters").addEventListener("click",()=>{$("filter-campus").value="";$("filter-class").value="";$("filter-type").value="all";renderDiscover()});
 function renderConnections(){const people=state.connections.map(findPerson).filter(Boolean);$("connections-list").innerHTML=people.length?people.map(p=>`<div class="connection-card"><div class="connection-info"><div class="person-top"><div class="avatar">${esc(initials(p.name))}</div><div><h3>${esc(p.name)} ${p.demo?'<span class="tag gold">Sample</span>':""}</h3><p>${esc(p.campus||"Campus not set")} · ${esc(p.classes||"No classes listed")}</p></div></div><p>${esc(p.help||p.bio||"Ready to study together.")}</p></div><div class="btn-row"><button class="btn small" data-plan="${esc(p.id)}">＋ Plan session</button><button class="btn secondary small" data-remove="${esc(p.id)}">Remove</button></div></div>`).join(""):'<div class="placeholder"><strong>No connections yet</strong>Go to Discover and connect with a student to see them here.</div>';$("connections-list").querySelectorAll("[data-plan]").forEach(b=>b.addEventListener("click",()=>startPlan(b.dataset.plan)));$("connections-list").querySelectorAll("[data-remove]").forEach(b=>b.addEventListener("click",()=>{const id=b.dataset.remove;state.connections=state.connections.filter(x=>x!==id);saveState();renderProfile();renderConnections();renderSessions()}))}
-function startPlan(id){if(!connected(id)){connect(id);return}nav("study-plans");$("session-person").value=id;const p=findPerson(id);if(p){$("session-class").value=list(state.profile.classes).find(c=>list(p.classes).includes(c))||list(p.classes)[0]||""}$("session-class").focus()}
+function startPlan(id){if(!connected(id))returnnav("study-plans");$("session-person").value=id;const p=findPerson(id);if(p){$("session-class").value=list(state.profile.classes).find(c=>list(p.classes).includes(c))||list(p.classes)[0]||""}$("session-class").focus()}
 $("session-form").addEventListener("submit",e=>{e.preventDefault();const date=$("session-date").value,time=$("session-time").value;if(date<todayString()){ $("session-message").textContent="Please choose today or a future date.";return}state.sessions.push({id:uid(),personId:$("session-person").value,className:$("session-class").value.trim(),date,time,location:$("session-location").value.trim(),goal:$("session-goal").value.trim(),created:Date.now()});saveState();$("session-message").textContent="✓ Study session saved.";e.target.reset();renderSessions();renderProfile();setTimeout(()=>{$("session-message").textContent=""},2500)});
 function todayString(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 function uid(){return "s"+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 function renderSessions(){const select=$("session-person"),old=select.value,people=state.connections.map(findPerson).filter(Boolean);select.innerHTML='<option value="">Choose a connection</option>'+people.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");if(people.some(p=>p.id===old))select.value=old;const sessions=[...state.sessions].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));$("sessions-list").innerHTML=sessions.length?sessions.map(s=>{const p=findPerson(s.personId);return `<div class="session-card"><div class="session-info"><h3>${esc(s.className)} with ${esc(p?p.name:"Former connection")}</h3><p>${esc(s.date)} at ${esc(s.time)}${s.location?" · "+esc(s.location):""}</p>${s.goal?`<p>Goal: ${esc(s.goal)}</p>`:""}</div><button class="btn danger small" data-delete-session="${esc(s.id)}">Delete</button></div>`}).join(""):'<div class="placeholder"><strong>No study sessions yet</strong>Connect with someone, then use the form above to create a study plan.</div>';$("sessions-list").querySelectorAll("[data-delete-session]").forEach(b=>b.addEventListener("click",()=>{if(!confirm("Delete this study session?"))return;state.sessions=state.sessions.filter(s=>s.id!==b.dataset.deleteSession);saveState();renderSessions();renderProfile()}))}
-$("add-samples").addEventListener("click",()=>{const samples=[
-{id:"demo-ana",name:"Ana",college:"Central Piedmont",campus:"Central",role:"Offer tutoring",classes:"MAT-171, BIO-111",skills:"MAT-171, Algebra",help:"Happy to help with algebra and practice problems.",availability:"Mon/Wed after 4 PM",bio:"I like breaking hard topics into small steps.",demo:true,likesYou:true},
-{id:"demo-jordan",name:"Jordan",college:"Central Piedmont",campus:"Levine",role:"Study partner",classes:"ENG-111, PSY-150",skills:"Writing, Psychology",help:"Looking for a weekly study group.",availability:"Tuesdays after 2 PM",bio:"I enjoy collaborative study sessions.",demo:true,likesYou:false},
-{id:"demo-maya",name:"Maya",college:"Central Piedmont",campus:"Harper",role:"Tutor",classes:"MAT-171, ENG-111",skills:"MAT-171, Statistics",help:"Can help review math concepts before exams.",availability:"Weekends",bio:"Practice questions and friendly accountability work best for me.",demo:true,likesYou:true},
-{id:"demo-chris",name:"Chris",college:"Central Piedmont",campus:"Cato",role:"Both",classes:"BIO-111, CHM-151",skills:"Biology, Chemistry",help:"Want a small science study group.",availability:"Thursdays after 5 PM",bio:"I prefer whiteboard sessions and shared notes.",demo:true},
-{id:"demo-sam",name:"Sam",college:"Central Piedmont",campus:"Merancas",role:"Study partner",classes:"MAT-171, CHM-151",skills:"Chemistry",help:"Reviewing for upcoming quizzes.",availability:"Friday afternoons",bio:"Looking for focused, low-pressure study time.",demo:true}
-];let added=0;samples.forEach(p=>{if(!state.people.some(x=>x.id===p.id)){state.people.push(p);added++}});saveState();renderDiscover();$("sample-message").textContent=added?`Added ${added} sample profiles.`:"Sample profiles are already loaded.";setTimeout(()=>{$("sample-message").textContent=""},3000)});
  window.sociusSwitchAccount = async function(user){
    STORAGE_KEY="socius-app-v1-user-"+user.id;
    state=loadState();
