@@ -69,6 +69,7 @@ body.auth-locked #auth-screen{display:flex}
 .chat-contacts{border-right:1px solid var(--border);padding-right:16px}.chat-contact{display:block;width:100%;padding:12px;text-align:left;background:white;color:var(--green);border:1px solid var(--border);border-radius:9px;margin-bottom:8px;cursor:pointer;font-weight:650}.chat-contact.active{background:#e9eee8;border-color:var(--green)}
 .chat-main{min-width:0;display:flex;flex-direction:column}.chat-history{flex:0 0 340px;height:340px;min-height:0;max-height:340px;overflow-y:auto;overscroll-behavior:contain;background:#f7f7f3;border:1px solid var(--border);border-radius:12px;padding:15px;display:flex;flex-direction:column;gap:9px}.chat-bubble{padding:10px 13px;border-radius:13px;max-width:85%;white-space:pre-wrap;overflow-wrap:anywhere;background:#e5e7eb;align-self:flex-start}.chat-bubble.mine{background:var(--green);color:white;align-self:flex-end}.chat-time{font-size:.7rem;opacity:.7;margin-top:5px}.chat-compose{display:flex;gap:8px;margin-top:12px}.chat-compose input{flex:1;min-width:0}
 @media(max-width:700px){.chat-layout{grid-template-columns:1fr}.chat-contacts{border-right:0;border-bottom:1px solid var(--border);padding:0 0 12px}.chat-history{flex-basis:320px;height:320px;max-height:320px}}
+.group-choices{display:flex;gap:10px;flex-wrap:wrap}.group-check{display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:9px 12px;cursor:pointer;font-weight:500}.group-check input{width:auto}.group-check span{font-size:.9rem}#group-chat-history{display:flex;flex-direction:column;overflow-y:auto}#group-detail{scroll-margin-top:20px}
 </style>
 </head>
 <body class="auth-locked">
@@ -177,6 +178,15 @@ body.auth-locked #auth-screen{display:flex}
   </form></div>
   <div class="section-row"><h2>Shared study sessions</h2><button type="button" class="btn secondary small" id="refresh-sessions">↻ Refresh</button></div><div id="sessions-status" class="message" role="status" aria-live="polite"></div><div class="card" id="sessions-list"></div>
  </section>
+ <section id="view-groups" class="view">
+  <h1>Study groups</h1><p class="subtitle">Bring several matched students together for group chats and shared study schedules.</p>
+  <div class="card"><h2>Create a group</h2><form id="group-create-form"><div class="grid"><div class="form-group"><label for="group-name">Group name</label><input id="group-name" maxlength="80" placeholder="MAT-171 Exam Prep" required></div><div class="form-group"><label for="group-subject">Class or subject</label><input id="group-subject" maxlength="120" placeholder="MAT-171" required></div></div><div class="form-group"><label for="group-invitees">Invite your mutual matches</label><div id="group-invitees" class="group-choices"></div></div><button class="btn" type="submit">Create group and invite</button><div id="group-create-status" class="message" role="status"></div></form></div>
+  <div class="section-row"><h2>Your groups and invitations</h2><button type="button" class="btn secondary small" id="group-refresh">↻ Refresh</button></div><div id="group-status" class="message" role="status"></div><div class="card" id="group-list"></div>
+  <div class="card hidden" id="group-detail"><div class="section-row"><h2 id="group-detail-name">Group</h2><button class="btn secondary small" type="button" id="group-close">Close</button></div><p id="group-detail-subject" class="muted"></p><h3 style="margin-top:18px">Members</h3><div id="group-members"></div><div id="group-add-wrap" class="form-group" style="margin-top:12px"><label for="group-add-member">Invite another match</label><div class="btn-row"><select id="group-add-member" style="flex:1"><option value="">Choose a match</option></select><button type="button" class="btn secondary" id="group-add-btn">Invite</button></div></div><div id="group-member-status" class="message" role="status"></div>
+   <h3 style="margin-top:20px">Group chat</h3><div id="group-chat-history" class="chat-history" style="height:260px;max-height:260px;flex-basis:260px"></div><form id="group-chat-form" class="chat-compose"><input id="group-chat-input" maxlength="2000" placeholder="Message your group…" required><button class="btn" type="submit">Send</button></form><div id="group-chat-status" class="message" role="status"></div>
+   <h3 style="margin-top:24px">Group study schedule</h3><form id="group-session-form"><div class="grid"><div class="form-group"><label for="group-session-date">Date</label><input id="group-session-date" type="date" required></div><div class="form-group"><label for="group-session-time">Time</label><input id="group-session-time" type="time" required></div></div><div class="form-group"><label for="group-session-place">Location or meeting link</label><input id="group-session-place" maxlength="300" placeholder="Library room 204"></div><div class="form-group"><label for="group-session-topic">What will you study?</label><input id="group-session-topic" maxlength="200" required placeholder="Chapter 4 review"></div><button class="btn" type="submit">Schedule group session</button><div id="group-session-status" class="message" role="status"></div></form><div id="group-sessions" style="margin-top:15px"></div>
+  </div>
+ </section>
  <section id="view-notifications" class="view">
   <h1>Notifications</h1><p class="subtitle">Likes, new matches, messages, and study invitations in one place.</p>
   <div class="btn-row" style="margin-bottom:14px"><button class="btn secondary small" type="button" id="refresh-notifications">↻ Refresh notifications</button><button class="btn secondary small" type="button" id="read-notifications">Mark all as read</button></div>
@@ -217,7 +227,7 @@ function list(value){return String(value||"").split(",").map(x=>x.trim().toLower
 function initials(name){return String(name||"?").trim().charAt(0).toUpperCase()||"?"}
 function findPerson(id){return state.people.find(p=>p.id===id)}
 function connected(id){return state.connections.includes(id)}
-function nav(view){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.view===view));if(view==="discover")void loadRealStudents();if(view==="connections")void refreshMatches();if(view==="messages")void openMessages();if(view==="study-plans")void loadSharedSessions();if(view==="notifications")void loadNotifications();window.scrollTo({top:0,behavior:"smooth"})}
+function nav(view){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.view===view));if(view==="discover")void loadRealStudents();if(view==="connections")void refreshMatches();if(view==="messages")void openMessages();if(view==="study-plans")void loadSharedSessions();if(view==="notifications")void loadNotifications();if(view==="groups")void loadGroups();window.scrollTo({top:0,behavior:"smooth"})}
 document.querySelectorAll(".nav-btn").forEach(b=>b.addEventListener("click",()=>nav(b.dataset.view)));
 function fillForm(){const p=state.profile;["name","college","campus","role","classes","help","skills","availability","bio"].forEach(k=>$(k).value=p[k]||"");renderProfile()}
 function renderProfile(){const p=state.profile;const name=p.name||"Student";$("sidebar-name").textContent=name;$("sidebar-avatar").textContent=initials(name);$("profile-avatar").textContent=initials(name);$("profile-display-name").textContent=name;$("profile-display-campus").textContent=[p.college,p.campus?p.campus+" campus":"Choose a campus"].filter(Boolean).join(" · ");$("stat-connections").textContent=state.connections.length;$("stat-classes").textContent=list(p.classes).length;$("stat-sessions").textContent=sharedSessions.filter(x=>x.status==="accepted").length;$("connection-count").textContent=state.connections.length?`(${state.connections.length})`:""}
@@ -549,6 +559,109 @@ function renderSessions(){
   }catch(err){$("sessions-status").textContent="Could not update session: "+(err.message||"Unknown error");btn.disabled=false}
  }));
 }
+
+// Step 9: group membership, messages and schedules are persisted in Supabase.
+let myGroups=[],groupMemberships=[],activeGroupId=null,groupRequest=0,groupDetailRequest=0,groupPoll=null;
+const groupMe=()=>window.sociusCurrentUserId;
+function renderGroupInvitees(){
+ const el=$("group-invitees");if(!el)return;
+ const people=state.connections.map(findPerson).filter(Boolean);
+ el.innerHTML=people.length?people.map(p=>`<label class="group-check"><input type="checkbox" name="group-invite" value="${esc(p.id)}"><span>${esc(p.name)} · ${esc(p.campus||"Campus")}</span></label>`).join(""):'<p class="muted">Mutually match with students before inviting them to a group.</p>';
+}
+function groupStatus(message){$("group-status").textContent=message}
+async function loadGroups(){
+ const request=++groupRequest;
+ groupStatus("Loading groups…");renderGroupInvitees();
+ try{
+  const {db,user}=await verifiedAccount();
+  const {data:members,error:memberError}=await db.from("study_group_members").select("group_id,user_id,status,joined_at").eq("user_id",user.id);
+  if(memberError)throw memberError;
+  const ids=(members||[]).map(m=>m.group_id);
+  let groups=[];
+  if(ids.length){const {data,error}=await db.from("study_groups").select("id,owner_id,name,subject,created_at").in("id",ids).order("created_at",{ascending:false});if(error)throw error;groups=data||[]}
+  if(request!==groupRequest)return;
+  groupMemberships=members||[];myGroups=groups;renderGroups();groupStatus(`${groups.length} group${groups.length===1?"":"s"} found.`);
+  if(activeGroupId&&groups.some(g=>g.id===activeGroupId))await openGroup(activeGroupId);else if(activeGroupId)closeGroup();
+ }catch(err){if(request!==groupRequest)return;groupStatus("Could not load groups: "+(err.message||"Unknown error")+". Run the Step 9 SQL setup first.");console.error("Group loading failed",err)}
+}
+function renderGroups(){
+ const el=$("group-list");
+ el.innerHTML=myGroups.length?myGroups.map(g=>{
+  const membership=groupMemberships.find(m=>m.group_id===g.id),pending=membership?.status==="pending";
+  return `<div class="session-card"><div class="session-info"><h3>${esc(g.name)}</h3><p>${esc(g.subject)} · ${pending?"Invitation pending":"Member"}</p></div><div class="btn-row">${pending?`<button type="button" class="btn small" data-group-answer="accepted" data-group="${esc(g.id)}">Accept</button><button type="button" class="btn secondary small" data-group-answer="declined" data-group="${esc(g.id)}">Decline</button>`:`<button type="button" class="btn small" data-group-open="${esc(g.id)}">Open group</button>`}</div></div>`
+ }).join(""):'<div class="placeholder"><strong>No groups yet</strong>Create a study group or wait for an invitation from a match.</div>';
+ el.querySelectorAll("[data-group-open]").forEach(b=>b.addEventListener("click",()=>void openGroup(b.dataset.groupOpen)));
+ el.querySelectorAll("[data-group-answer]").forEach(b=>b.addEventListener("click",async()=>{
+  b.disabled=true;try{const {db,user}=await verifiedAccount();const {error}=await db.from("study_group_members").update({status:b.dataset.groupAnswer}).eq("group_id",b.dataset.group).eq("user_id",user.id);if(error)throw error;await loadGroups()}catch(err){groupStatus("Could not respond: "+err.message);b.disabled=false}
+ }));
+}
+$("group-create-form").addEventListener("submit",async e=>{
+ e.preventDefault();const btn=e.submitter||e.target.querySelector('button[type="submit"]'),msg=$("group-create-status");
+ const invitees=[...document.querySelectorAll('input[name="group-invite"]:checked')].map(x=>x.value);
+ if(!invitees.length){msg.textContent="Select at least one mutual match to invite.";return}
+ btn.disabled=true;msg.textContent="Creating group…";
+ try{
+  const {db,user}=await verifiedAccount();
+  const {data:group,error}=await db.from("study_groups").insert({owner_id:user.id,name:$("group-name").value.trim(),subject:$("group-subject").value.trim()}).select("id").single();
+  if(error)throw error;
+  const {error:inviteError}=await db.from("study_group_members").insert(invitees.map(id=>({group_id:group.id,user_id:id,status:"pending"})));
+  if(inviteError){msg.textContent="Group created, but invitations failed: "+inviteError.message+". Open the group to retry.";await loadGroups();return}
+  msg.textContent="✓ Group created and invitations sent!";e.target.reset();await loadGroups();
+ }catch(err){msg.textContent="Could not create group: "+(err.message||"Unknown error");console.error("Group creation failed",err)}finally{btn.disabled=false}
+});
+$("group-refresh").addEventListener("click",()=>void loadGroups());
+function closeGroup(){activeGroupId=null;$("group-detail").classList.add("hidden");++groupDetailRequest;if(groupPoll){clearInterval(groupPoll);groupPoll=null}}
+$("group-close").addEventListener("click",closeGroup);
+async function openGroup(id){
+ const group=myGroups.find(g=>g.id===id),membership=groupMemberships.find(m=>m.group_id===id);
+ if(!group||membership?.status!=="accepted")return;
+ activeGroupId=id;$("group-detail").classList.remove("hidden");$("group-detail-name").textContent=group.name;$("group-detail-subject").textContent=group.subject;
+ const owner=group.owner_id===groupMe();$("group-add-wrap").classList.toggle("hidden",!owner);
+ const choices=state.connections.filter(personId=>personId!==groupMe()).map(findPerson).filter(Boolean);
+ $("group-add-member").innerHTML='<option value="">Choose a match</option>'+choices.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
+ if(groupPoll)clearInterval(groupPoll);
+ await loadGroupDetail(id);
+ groupPoll=setInterval(()=>{if(activeGroupId===id&&!document.body.classList.contains("auth-locked"))void loadGroupDetail(id,true)},12000);
+}
+async function loadGroupDetail(id,silent=false){
+ const request=++groupDetailRequest;if(!silent)$("group-chat-status").textContent="Loading group…";
+ try{
+  const {db,user}=await verifiedAccount();
+  const [members,messages,sessions]=await Promise.all([
+   db.from("study_group_members").select("user_id,status").eq("group_id",id),
+   db.from("study_group_messages").select("id,sender_id,body,created_at").eq("group_id",id).order("created_at",{ascending:true}).limit(200),
+   db.from("study_group_sessions").select("id,session_date,session_time,location,topic,created_by").eq("group_id",id).order("session_date",{ascending:true})
+  ]);
+  for(const result of [members,messages,sessions])if(result.error)throw result.error;
+  if(request!==groupDetailRequest||activeGroupId!==id)return;
+  const allMembers=members.data||[],known=allMembers.map(m=>m.user_id).filter(x=>x!==user.id&&!findPerson(x));
+  let extra=[];
+  if(known.length){const {data,error}=await db.from("profiles").select("id,name").in("id",known);if(!error)extra=data||[]}
+  const nameFor=uid=>uid===user.id?"You":findPerson(uid)?.name||extra.find(x=>x.id===uid)?.name||"Student";
+  $("group-members").innerHTML=allMembers.map(m=>`<span class="tag">${esc(nameFor(m.user_id))} · ${esc(m.status)}</span>`).join(" ");
+  const chat=$("group-chat-history"),nearBottom=chat.scrollHeight-chat.scrollTop-chat.clientHeight<70;
+  const html=(messages.data||[]).map(m=>`<div class="chat-bubble ${m.sender_id===user.id?"mine":""}"><strong>${esc(nameFor(m.sender_id))}</strong><div>${esc(m.body)}</div><div class="chat-time">${esc(new Date(m.created_at).toLocaleString())}</div></div>`).join("");
+  if(chat.innerHTML!==html)chat.innerHTML=html||'<p class="muted">Start the conversation!</p>';
+  if(!silent||nearBottom)chat.scrollTop=chat.scrollHeight;
+  $("group-sessions").innerHTML=(sessions.data||[]).length?(sessions.data||[]).map(x=>`<div class="session-card"><div class="session-info"><strong>${esc(x.topic)}</strong><p>${esc(x.session_date)} at ${esc(x.session_time.slice(0,5))}${x.location?" · "+esc(x.location):""}</p></div></div>`).join(""):'<p class="muted">No group sessions scheduled yet.</p>';
+  if(!silent)$("group-chat-status").textContent="";
+ }catch(err){if(request!==groupDetailRequest)return;$("group-chat-status").textContent="Could not load group: "+(err.message||"Unknown error");console.error("Group details failed",err)}
+}
+$("group-add-btn").addEventListener("click",async()=>{
+ const id=$("group-add-member").value,group=myGroups.find(g=>g.id===activeGroupId),msg=$("group-member-status");
+ if(!id||!group||group.owner_id!==groupMe()||!connected(id)){msg.textContent="Choose a mutual match.";return}
+ try{const {db}=await verifiedAccount();const {error}=await db.from("study_group_members").insert({group_id:group.id,user_id:id,status:"pending"});if(error)throw error;msg.textContent="✓ Invitation sent.";await loadGroupDetail(group.id)}catch(err){msg.textContent="Could not invite student: "+err.message}
+});
+$("group-chat-form").addEventListener("submit",async e=>{
+ e.preventDefault();if(!activeGroupId)return;const body=$("group-chat-input").value.trim(),msg=$("group-chat-status"),btn=e.submitter||e.target.querySelector('button[type="submit"]');if(!body)return;
+ btn.disabled=true;try{const {db,user}=await verifiedAccount();const {error}=await db.from("study_group_messages").insert({group_id:activeGroupId,sender_id:user.id,body});if(error)throw error;$("group-chat-input").value="";await loadGroupDetail(activeGroupId)}catch(err){msg.textContent="Message not sent: "+err.message}finally{btn.disabled=false}
+});
+$("group-session-form").addEventListener("submit",async e=>{
+ e.preventDefault();if(!activeGroupId)return;const msg=$("group-session-status"),btn=e.submitter||e.target.querySelector('button[type="submit"]'),date=$("group-session-date").value;
+ if(date<todayString()){msg.textContent="Choose today or a future date.";return}
+ btn.disabled=true;try{const {db,user}=await verifiedAccount();const {error}=await db.from("study_group_sessions").insert({group_id:activeGroupId,created_by:user.id,session_date:date,session_time:$("group-session-time").value,location:$("group-session-place").value.trim(),topic:$("group-session-topic").value.trim()});if(error)throw error;msg.textContent="✓ Session shared with your group.";e.target.reset();await loadGroupDetail(activeGroupId)}catch(err){msg.textContent="Could not schedule: "+err.message}finally{btn.disabled=false}
+});
+
  function setProfileReady(ready){
    profileReady=ready;
    $("profile-form").querySelector('button[type="submit"]').disabled=!ready;
@@ -633,9 +746,9 @@ function renderSessions(){
      $("save-success").textContent="⚠ Could not load your saved profile. Saving is disabled to protect your data: "+(err.message||"Unknown error");
      setProfileReady(false);
    }
-   state.connections=[];state.likes=[];sharedSessions=[];window.sociusCurrentUserId=user.id;startNotificationPolling(user.id);
+   closeGroup();myGroups=[];groupMemberships=[];state.connections=[];state.likes=[];sharedSessions=[];window.sociusCurrentUserId=user.id;startNotificationPolling(user.id);
    renderConnections();renderSessions();renderProfile();renderDiscover();nav("profile");
-   try{await loadRealStudents();await loadSharedSessions();await loadNotifications()}catch(err){console.error("Could not initialize matching, sessions or notifications",err)}
+   try{await loadRealStudents();await loadSharedSessions();await loadNotifications();await loadGroups()}catch(err){console.error("Could not initialize matching, sessions or notifications",err)}
  };
 
 state.connections=[];state.likes=[];window.sociusCurrentUserId=null;fillForm();setProfileReady(false);renderConnections();renderSessions();renderProfile();renderDiscover();
