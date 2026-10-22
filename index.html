@@ -808,6 +808,10 @@ state.connections=[];state.likes=[];window.sociusCurrentUserId=null;fillForm();s
   const PROJECT_URL="https://bsihcoivmzdmwlfxbrct.supabase.co";
   const PUBLISHABLE_KEY="sb_publishable_l7n7CVwgWDQXBfXYsH_-GA_X4Ld9GpA";
   let db,mode="login",currentUserId=null;
+  // Recovery links may arrive before Supabase emits PASSWORD_RECOVERY.
+  const recoveryLink=new URLSearchParams(location.hash.slice(1)).get("type")==="recovery" || new URLSearchParams(location.search).get("type")==="recovery";
+  let recovering=recoveryLink;
+  function showRecovery(){recovering=true;document.body.classList.add("auth-locked");switchMode("recover");notice("Enter your new password below.");}
   function notice(msg,isError=false){$("auth-feedback").textContent=msg;$("auth-feedback").classList.toggle("error",isError)}
   function switchMode(next){
    mode=next;notice("");
@@ -874,7 +878,10 @@ state.connections=[];state.likes=[];window.sociusCurrentUserId=null;fillForm();s
     }else if(mode==="recover"){
      const {error}=await db.auth.updateUser({password});
      if(error)throw error;
-     await db.auth.signOut();lock();notice("Password updated. Please log in with your new password.");
+     recovering=false;
+     await db.auth.signOut();
+     history.replaceState(null,"",location.pathname+location.search);
+     lock();notice("Password updated! Log in using your new password.");
     }
    }catch(err){notice(err.message||"Something went wrong. Please try again.",true)}
    finally{button.disabled=false}
@@ -891,15 +898,24 @@ state.connections=[];state.likes=[];window.sociusCurrentUserId=null;fillForm();s
    db=window.supabase.createClient(PROJECT_URL,PUBLISHABLE_KEY);
     window.sociusDb=db; // Shared with the profile-saving code above.
    db.auth.onAuthStateChange((event,session)=>{
-    if(event==="PASSWORD_RECOVERY"){
-     document.body.classList.add("auth-locked");switchMode("recover");return;
+    if(event==="PASSWORD_RECOVERY"){showRecovery();return}
+    if(event==="SIGNED_OUT"){if(!recovering)lock();return}
+    if(recovering){
+     if(session?.user && mode!=="recover")showRecovery();
+     return;
     }
-    if(event==="SIGNED_OUT"){lock();return}
     if(session?.user && mode!=="recover")void revealVerifiedUser();
    });
    const {data,error}=await db.auth.getSession();
    if(error){notice(error.message,true);return}
-   if(data.session?.user && mode!=="recover")await revealVerifiedUser();
+   if(recovering){
+    if(data.session?.user)showRecovery();
+    else if(recoveryLink){
+     document.body.classList.add("auth-locked");switchMode("login");
+     notice("This reset link may be expired or invalid. Select Forgot password? to request a new one.",true);
+     recovering=false;
+    }
+   }else if(data.session?.user && mode!=="recover")await revealVerifiedUser();
   }
   init();
  })();
