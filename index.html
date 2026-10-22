@@ -126,6 +126,100 @@ button:focus-visible,.btn:focus-visible,.nav-btn:focus-visible{outline:3px solid
 @media(max-width:720px){.auth-shell{max-width:480px}.auth-intro{gap:15px;padding:27px}.auth-intro h1{font-size:1.9rem}.auth-panel{padding:28px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 
+/* StudySwipe 2026 visual refinement. Presentation-only: no application logic changed. */
+:root{--bg:#b7a66f;--side:#f7f5ed;--card:#fffefa;--green:#234f3e;--green2:#173d2e;--text:#20362b;--muted:#66746a;--border:#dcded1;--soft:#e7eee3;--gold:#b7a66f}
+html{color-scheme:light}
+body{background:#b7a66f;color:var(--text);font-feature-settings:"kern" 1}
+main{background:#b7a66f;padding:clamp(24px,4.1vw,56px) clamp(18px,5.4vw,82px)}
+.view{max-width:1080px}
+aside{background:#f7f5ed;border-right:1px solid #dedccf;width:264px;padding:30px 17px 22px}
+.logo{font-size:1.56rem;color:#193c2b;margin:3px 0 44px 12px;font-weight:820;letter-spacing:-.065em}
+.logo span{color:#547a57}
+nav{gap:5px}.nav-btn{border-radius:11px;min-height:47px;padding:12px 14px;color:#53655a;font-weight:590}
+.nav-btn:hover{background:#eaece3;color:#244c37}.nav-btn.active{background:#dfe9dc;color:#1c5135;font-weight:760;box-shadow:inset 3px 0 #2a6846}
+.sidebar-footer{background:#ebece1;border:1px solid #dcded0;border-radius:13px}
+h1{font-size:clamp(2rem,3.4vw,2.85rem);font-weight:780;letter-spacing:-.065em;line-height:1.1;color:#183d2b}
+h2{font-size:1.22rem;font-weight:760;color:#214532}h3{color:#254333}
+.subtitle{color:#384a3d;font-weight:480;max-width:700px}
+.card{background:#fffefa;border:1px solid #e9e7db;border-radius:17px;box-shadow:0 4px 8px #332b1409,0 15px 38px #332b1410;padding:clamp(21px,3.2vw,34px);margin-bottom:19px}
+.stat{background:#fdfcf7;border:1px solid #ebe9dd;border-radius:14px;box-shadow:0 3px 12px #342e1b0b}
+.stat strong{color:#245b3c}
+.btn{background:#24553b;border-radius:10px;min-height:44px;font-weight:700;box-shadow:0 2px 5px #173d2e16}
+.btn:hover{background:#163f2a;box-shadow:0 5px 12px #173d2e1e}
+.btn.secondary{background:#fdfcf8;border-color:#cdd8ca;color:#28573c}
+.btn.secondary:hover{background:#eaf0e6}
+input,textarea,select{background:#fffefa;border:1px solid #cbd5c8;border-radius:10px;min-height:45px}
+input:focus,textarea:focus,select:focus{border-color:#376f4b;box-shadow:0 0 0 4px #376f4b20}
+label{color:#34503d}
+.tag{background:#e5eee1;color:#2d603e;border-radius:7px}
+.tag.gold{background:#f1e7cb;color:#775b2e}
+.placeholder{background:#fffdf7;border-color:#c5c9b7;border-radius:14px}
+.swipe-stage{max-width:610px}.swipe-card{background:#fffefa;border:1px solid #e8e6d9;border-radius:20px;box-shadow:0 16px 44px #3b331b24}
+.swipe-card-head{background:#e5ece0;border-bottom:1px solid #d4e0d1;padding:28px}
+.swipe-card-body{padding:28px}
+.swipe-avatar{background:#2a5c3f;color:#fff;border:4px solid #fffefa}
+.swipe-action{background:#fffefa;box-shadow:0 4px 14px #302c1a1b}
+.swipe-action.like{background:#e8f2e6;border-color:#a4c3a7}
+.swipe-action.pass{background:#fff9f7}
+.chat-history{background:#f5f5ee;border-color:#d9e0d4;border-radius:13px}
+.chat-bubble.mine{background:#24553b}.chat-bubble{border-radius:14px}
+.chat-contact.active{background:#e0ebdf;border-color:#96b99d}
+.notice-item.unread{background:#e8f1e4}
+.group-check{background:#fffefa;border-color:#d9e2d4}
+#auth-screen{background:#b7a66f}
+.auth-shell{background:#fffefa;border-radius:20px;border:1px solid #e8e6d9;box-shadow:0 20px 60px #3b321d33;overflow:hidden}
+.auth-intro{background:#1d4933}
+.auth-mark span{color:#d2e0b9}
+.auth-panel{background:#fffefa}
+.auth-tabs{background:#e9eee6}
+.auth-tab.active{background:#fffefa}
+.auth-note{background:#ffffff0c}
+button:focus-visible,.btn:focus-visible,.nav-btn:focus-visible{outline:3px solid #2f744a;outline-offset:3px}
+@media(max-width:760px){aside{width:100%;padding:16px 14px 12px}.logo{margin:0 0 16px 4px}main{padding:26px 15px}.card{padding:20px}.nav-btn.active{box-shadow:inset 0 -3px #2a6846}.swipe-card-head,.swipe-card-body{padding:21px}}
+
+
+/* StudySwipe text contrast update: black on light surfaces, white on dark green. */
+:root{--text:#000000;--muted:#000000}
+body,main,aside,.card,.stat,.placeholder,.swipe-card,.swipe-card-head,.swipe-card-body,
+.auth-panel,.sidebar-footer,.notice-item,.chat-history,.chat-contact,.group-check,
+.connection-card,.session-card{color:#000}
+h1,h2,h3,h4,h5,h6,p,label,.subtitle,.logo,.logo span,.nav-btn,.nav-btn.active,
+.nav-btn:hover,.stat strong,.stat span,.tag,.tag.gold,.placeholder strong,
+.person-meta p,.person-card .bio,.connection-info p,.session-info p,.empty-note,
+.swipe-name,.swipe-campus,.swipe-bio,.swipe-hints,.swipe-feedback,.swipe-progress,
+.notice-body p,.chat-contact,.chat-contact.active,.auth-panel .subtitle,
+.auth-tab,.auth-tab.active,.auth-inline,.auth-feedback,.auth-footer,.message,
+.sidebar-footer,.swipe-action.like,.swipe-action.pass{color:#000}
+input,textarea,select{color:#000}
+input::placeholder,textarea::placeholder{color:#000;opacity:.7}
+.btn.secondary,.btn.danger{color:#000}
+/* Keep legible light text on dark green buttons, chat bubbles, and auth panel. */
+.btn:not(.secondary):not(.danger),.btn:not(.secondary):not(.danger) *{color:#fff}
+.chat-bubble.mine,.chat-bubble.mine *{color:#fff}
+.auth-intro,.auth-intro h1,.auth-intro p,.auth-intro .auth-mark,
+.auth-intro .auth-mark span,.auth-intro .auth-note{color:#fff}
+.notice-badge,.notice-badge *,.swipe-avatar,.swipe-avatar *{color:#fff}
+
+
+/* StudySwipe: consistent 2px forest-green outlines on text-bearing surfaces. */
+:root{--studyswipe-outline:#234f3e}
+.card,.stat,.placeholder,.sidebar-footer,.auth-shell,.auth-note,.auth-tabs,.auth-tab.active,
+.swipe-card,.swipe-card-head,.tag,.group-check,.chat-contact,.chat-history,.chat-bubble,
+.notice-item,.session-card,.connection-card,.group-session-card,.group-member-row,
+input:not([type="checkbox"]):not([type="radio"]),textarea,select,
+.btn,.nav-btn,.swipe-action,.auth-inline,.auth-feedback:not(:empty){
+ border:2px solid var(--studyswipe-outline);
+}
+/* Keep text-only navigation and links clean until hovered/selected. */
+.nav-btn{border-color:transparent}
+.nav-btn:hover,.nav-btn.active{border-color:var(--studyswipe-outline)}
+.auth-inline{border-color:transparent}
+.auth-inline:hover,.auth-inline:focus-visible{border-color:var(--studyswipe-outline)}
+/* Preserve white lettering on dark-green controls and outgoing chat bubbles. */
+.btn:not(.secondary):not(.danger),.chat-bubble.mine{color:#fff}
+/* Keep compact list rows from gaining unwanted double outlines. */
+.connection-card,.session-card{border-radius:10px;padding:12px}
+
 </style>
 </head>
 <body class="auth-locked">
@@ -145,7 +239,7 @@ button:focus-visible,.btn:focus-visible,.nav-btn:focus-visible{outline:3px solid
    </div>
    <form id="auth-form">
     <div class="form-group auth-hidden" id="auth-name-group"><label for="auth-name">Your name</label><input id="auth-name" autocomplete="name" maxlength="60" placeholder="Your first name"></div>
-    <div class="form-group"><label for="auth-email">College email</label><input id="auth-email" type="email" autocomplete="email" placeholder="name@school.edu" required></div>
+    <div class="form-group"><label for="auth-email">College email</label><input id="auth-email" type="email" autocomplete="email" placeholder="name@cpcc.edu or name@email.cpcc.edu" required></div>
     <div class="form-group" id="auth-password-group"><label for="auth-password">Password</label><input id="auth-password" type="password" minlength="8" autocomplete="current-password" placeholder="At least 8 characters" required></div>
     <div class="form-group auth-hidden" id="auth-confirm-group"><label for="auth-confirm">Confirm password</label><input id="auth-confirm" type="password" autocomplete="new-password" placeholder="Repeat your password"></div>
     <button class="btn" id="auth-submit" type="submit">Log in to StudySwipe</button>
