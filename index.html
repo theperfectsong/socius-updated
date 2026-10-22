@@ -184,7 +184,7 @@ body.auth-locked #auth-screen{display:flex}
   <div class="card"><h2>Create a group</h2><form id="group-create-form"><div class="grid"><div class="form-group"><label for="group-name">Group name</label><input id="group-name" maxlength="80" placeholder="MAT-171 Exam Prep" required></div><div class="form-group"><label for="group-subject">Class or subject</label><input id="group-subject" maxlength="120" placeholder="MAT-171" required></div></div><div class="form-group"><label for="group-invitees">Invite your mutual matches</label><div id="group-invitees" class="group-choices"></div></div><button class="btn" type="submit">Create group and invite</button><div id="group-create-status" class="message" role="status"></div></form></div>
   <div class="section-row"><h2>Your groups and invitations</h2><button type="button" class="btn secondary small" id="group-refresh">↻ Refresh</button></div><div id="group-status" class="message" role="status"></div><div class="card" id="group-list"></div>
   <div class="card hidden" id="group-detail"><div class="section-row"><h2 id="group-detail-name">Group</h2><button class="btn secondary small" type="button" id="group-close">Close</button></div><p id="group-detail-subject" class="muted"></p><h3 style="margin-top:18px">Members</h3><div id="group-members"></div><div id="group-add-wrap" class="form-group" style="margin-top:12px"><label for="group-add-member">Invite another match</label><div class="btn-row"><select id="group-add-member" style="flex:1"><option value="">Choose a match</option></select><button type="button" class="btn secondary" id="group-add-btn">Invite</button></div></div><div id="group-member-status" class="message" role="status"></div>
-   <h3 style="margin-top:20px">Group chat</h3><div id="group-chat-history" class="chat-history" style="height:260px;max-height:260px;flex-basis:260px"></div><form id="group-chat-form" class="chat-compose"><input id="group-chat-input" maxlength="2000" placeholder="Message your group…" required><button class="btn" type="submit">Send</button></form><div id="group-chat-status" class="message" role="status"></div>
+   <h3 style="margin-top:20px">Group chat <span class="tag">Live updates</span></h3><div id="group-chat-history" class="chat-history" style="height:260px;max-height:260px;flex-basis:260px"></div><form id="group-chat-form" class="chat-compose"><input id="group-chat-input" maxlength="2000" placeholder="Message your group…" required><button class="btn" type="submit">Send</button></form><div id="group-chat-status" class="message" role="status"></div>
    <h3 style="margin-top:24px">Group study schedule</h3><form id="group-session-form"><div class="grid"><div class="form-group"><label for="group-session-date">Date</label><input id="group-session-date" type="date" required></div><div class="form-group"><label for="group-session-time">Time</label><input id="group-session-time" type="time" required></div></div><div class="form-group"><label for="group-session-place">Location or meeting link</label><input id="group-session-place" maxlength="300" placeholder="Library room 204"></div><div class="form-group"><label for="group-session-topic">What will you study?</label><input id="group-session-topic" maxlength="200" required placeholder="Chapter 4 review"></div><button class="btn" type="submit">Schedule group session</button><div id="group-session-status" class="message" role="status"></div></form><div id="group-sessions" style="margin-top:15px"></div>
   </div>
  </section>
@@ -562,7 +562,7 @@ function renderSessions(){
 }
 
 // Step 9: group membership, messages and schedules are persisted in Supabase.
-let myGroups=[],groupMemberships=[],activeGroupId=null,groupRequest=0,groupDetailRequest=0,groupPoll=null;
+let myGroups=[],groupMemberships=[],activeGroupId=null,groupRequest=0,groupDetailRequest=0,groupPoll=null,groupLiveChannel=null,groupDetailBusy=false;
 const groupMe=()=>window.sociusCurrentUserId;
 function renderGroupInvitees(){
  const el=$("group-invitees");if(!el)return;
@@ -582,7 +582,7 @@ async function loadGroups(){
   if(ids.length){const {data,error}=await db.from("study_groups").select("id,owner_id,name,subject,created_at").in("id",ids).order("created_at",{ascending:false});if(error)throw error;groups=data||[]}
   if(request!==groupRequest)return;
   groupMemberships=members||[];myGroups=groups;renderGroups();groupStatus(`${groups.length} group${groups.length===1?"":"s"} found.`);
-  if(activeGroupId&&groups.some(g=>g.id===activeGroupId))await openGroup(activeGroupId);else if(activeGroupId)closeGroup();
+  if(activeGroupId&&groups.some(g=>g.id===activeGroupId))await loadGroupDetail(activeGroupId,true);else if(activeGroupId)closeGroup();
  }catch(err){if(request!==groupRequest)return;groupStatus("Could not load groups: "+(err.message||"Unknown error")+". Run the Step 9 SQL setup first.");console.error("Group loading failed",err)}
 }
 function renderGroups(){
@@ -611,7 +611,7 @@ $("group-create-form").addEventListener("submit",async e=>{
  }catch(err){msg.textContent="Could not create group: "+(err.message||"Unknown error");console.error("Group creation failed",err)}finally{btn.disabled=false}
 });
 $("group-refresh").addEventListener("click",()=>void loadGroups());
-function closeGroup(){activeGroupId=null;$("group-detail").classList.add("hidden");++groupDetailRequest;if(groupPoll){clearInterval(groupPoll);groupPoll=null}}
+function closeGroup(){if(groupLiveChannel){void window.sociusDb?.removeChannel(groupLiveChannel);groupLiveChannel=null}activeGroupId=null;$("group-detail").classList.add("hidden");++groupDetailRequest;if(groupPoll){clearInterval(groupPoll);groupPoll=null}}
 $("group-close").addEventListener("click",closeGroup);
 async function openGroup(id){
  const group=myGroups.find(g=>g.id===id),membership=groupMemberships.find(m=>m.group_id===id);
@@ -622,9 +622,20 @@ async function openGroup(id){
  $("group-add-member").innerHTML='<option value="">Choose a match</option>'+choices.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
  if(groupPoll)clearInterval(groupPoll);
  await loadGroupDetail(id);
- groupPoll=setInterval(()=>{if(activeGroupId===id&&!document.body.classList.contains("auth-locked"))void loadGroupDetail(id,true)},12000);
+ // Supabase Realtime pushes new chat messages and study sessions to other members.
+ // Short polling also works when Realtime publication is not enabled or a socket disconnects.
+ const db=window.sociusDb;
+ if(groupLiveChannel)void db.removeChannel(groupLiveChannel);
+ groupLiveChannel=db.channel(`socius-group-${id}-${Date.now()}`)
+  .on('postgres_changes',{event:'*',schema:'public',table:'study_group_messages',filter:`group_id=eq.${id}`},()=>{if(activeGroupId===id)void loadGroupDetail(id,true)})
+  .on('postgres_changes',{event:'*',schema:'public',table:'study_group_sessions',filter:`group_id=eq.${id}`},()=>{if(activeGroupId===id)void loadGroupDetail(id,true)})
+  .on('postgres_changes',{event:'*',schema:'public',table:'study_group_members',filter:`group_id=eq.${id}`},()=>{if(activeGroupId===id)void loadGroupDetail(id,true)})
+  .subscribe();
+ groupPoll=setInterval(()=>{if(activeGroupId===id&&!document.body.classList.contains("auth-locked")&&document.getElementById("view-groups").classList.contains("active"))void loadGroupDetail(id,true)},2000);
 }
 async function loadGroupDetail(id,silent=false){
+ if(groupDetailBusy && silent)return;
+ groupDetailBusy=true;
  const request=++groupDetailRequest;if(!silent)$("group-chat-status").textContent="Loading group…";
  try{
   const {db,user}=await verifiedAccount();
@@ -646,7 +657,7 @@ async function loadGroupDetail(id,silent=false){
   if(!silent||nearBottom)chat.scrollTop=chat.scrollHeight;
   $("group-sessions").innerHTML=(sessions.data||[]).length?(sessions.data||[]).map(x=>`<div class="session-card"><div class="session-info"><strong>${esc(x.topic)}</strong><p>${esc(x.session_date)} at ${esc(x.session_time.slice(0,5))}${x.location?" · "+esc(x.location):""}</p></div></div>`).join(""):'<p class="muted">No group sessions scheduled yet.</p>';
   if(!silent)$("group-chat-status").textContent="";
- }catch(err){if(request!==groupDetailRequest)return;$("group-chat-status").textContent="Could not load group: "+(err.message||"Unknown error");console.error("Group details failed",err)}
+ }catch(err){if(request!==groupDetailRequest)return;$("group-chat-status").textContent="Could not load group: "+(err.message||"Unknown error");console.error("Group details failed",err)}finally{groupDetailBusy=false}
 }
 $("group-add-btn").addEventListener("click",async()=>{
  const id=$("group-add-member").value,group=myGroups.find(g=>g.id===activeGroupId),msg=$("group-member-status");
