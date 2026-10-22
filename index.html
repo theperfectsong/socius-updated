@@ -183,7 +183,7 @@ body.auth-locked #auth-screen{display:flex}
   <h1>Study groups</h1><p class="subtitle">Bring several matched students together for group chats and shared study schedules.</p>
   <div class="card"><h2>Create a group</h2><form id="group-create-form"><div class="grid"><div class="form-group"><label for="group-name">Group name</label><input id="group-name" maxlength="80" placeholder="MAT-171 Exam Prep" required></div><div class="form-group"><label for="group-subject">Class or subject</label><input id="group-subject" maxlength="120" placeholder="MAT-171" required></div></div><div class="form-group"><label for="group-invitees">Invite your mutual matches</label><div id="group-invitees" class="group-choices"></div></div><button class="btn" type="submit">Create group and invite</button><div id="group-create-status" class="message" role="status"></div></form></div>
   <div class="section-row"><h2>Your groups and invitations</h2><button type="button" class="btn secondary small" id="group-refresh">↻ Refresh</button></div><div id="group-status" class="message" role="status"></div><div class="card" id="group-list"></div>
-  <div class="card hidden" id="group-detail"><div class="section-row"><h2 id="group-detail-name">Group</h2><button class="btn secondary small" type="button" id="group-close">Close</button></div><p id="group-detail-subject" class="muted"></p><h3 style="margin-top:18px">Members</h3><div id="group-members"></div><div id="group-add-wrap" class="form-group" style="margin-top:12px"><label for="group-add-member">Invite another match</label><div class="btn-row"><select id="group-add-member" style="flex:1"><option value="">Choose a match</option></select><button type="button" class="btn secondary" id="group-add-btn">Invite</button></div></div><div id="group-member-status" class="message" role="status"></div>
+  <div class="card hidden" id="group-detail"><div class="section-row"><h2 id="group-detail-name">Group</h2><button class="btn secondary small" type="button" id="group-close">Close</button></div><p id="group-detail-subject" class="muted"></p><div class="card" style="margin-top:16px;background:#f7f8f4"><h3>Group management</h3><form id="group-settings-form"><div class="grid"><div class="form-group"><label for="group-edit-name">Group name</label><input id="group-edit-name" maxlength="80" required></div><div class="form-group"><label for="group-edit-subject">Class or subject</label><input id="group-edit-subject" maxlength="120" required></div></div><div class="btn-row"><button class="btn small" type="submit" id="group-settings-save">Save group details</button><button class="btn danger small hidden" type="button" id="group-leave">Leave group</button></div></form><p id="group-settings-status" class="message" role="status"></p><p class="muted" id="group-owner-note" style="font-size:.85rem"></p></div><h3 style="margin-top:18px">Members</h3><div id="group-members"></div><div id="group-add-wrap" class="form-group" style="margin-top:12px"><label for="group-add-member">Invite another match</label><div class="btn-row"><select id="group-add-member" style="flex:1"><option value="">Choose a match</option></select><button type="button" class="btn secondary" id="group-add-btn">Invite</button></div></div><div id="group-member-status" class="message" role="status"></div>
    <h3 style="margin-top:20px">Group chat <span class="tag">Live updates</span></h3><div id="group-chat-history" class="chat-history" style="height:260px;max-height:260px;flex-basis:260px"></div><form id="group-chat-form" class="chat-compose"><input id="group-chat-input" maxlength="2000" placeholder="Message your group…" required><button class="btn" type="submit">Send</button></form><div id="group-chat-status" class="message" role="status"></div>
    <h3 style="margin-top:24px">Group study schedule</h3><form id="group-session-form"><div class="grid"><div class="form-group"><label for="group-session-date">Date</label><input id="group-session-date" type="date" required></div><div class="form-group"><label for="group-session-time">Time</label><input id="group-session-time" type="time" required></div></div><div class="form-group"><label for="group-session-place">Location or meeting link</label><input id="group-session-place" maxlength="300" placeholder="Library room 204"></div><div class="form-group"><label for="group-session-topic">What will you study?</label><input id="group-session-topic" maxlength="200" required placeholder="Chapter 4 review"></div><button class="btn" type="submit">Schedule group session</button><div id="group-session-status" class="message" role="status"></div></form><div id="group-sessions" style="margin-top:15px"></div>
   </div>
@@ -618,6 +618,11 @@ async function openGroup(id){
  if(!group||membership?.status!=="accepted")return;
  activeGroupId=id;$("group-detail").classList.remove("hidden");$("group-detail-name").textContent=group.name;$("group-detail-subject").textContent=group.subject;
  const owner=group.owner_id===groupMe();$("group-add-wrap").classList.toggle("hidden",!owner);
+ $("group-settings-form").querySelectorAll("input").forEach(input=>input.disabled=!owner);
+ $("group-settings-save").classList.toggle("hidden",!owner);
+ $("group-leave").classList.toggle("hidden",owner);
+ $("group-owner-note").textContent=owner?"You own this group. You can rename it, invite mutual matches, or remove other members. Owners cannot leave without transferring ownership (not supported yet).":"You can leave this group at any time. Only the owner can edit group details or remove members.";
+ $("group-edit-name").value=group.name;$("group-edit-subject").value=group.subject;$("group-settings-status").textContent="";
  const choices=state.connections.filter(personId=>personId!==groupMe()).map(findPerson).filter(Boolean);
  $("group-add-member").innerHTML='<option value="">Choose a match</option>'+choices.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
  if(groupPoll)clearInterval(groupPoll);
@@ -650,7 +655,14 @@ async function loadGroupDetail(id,silent=false){
   let extra=[];
   if(known.length){const {data,error}=await db.from("profiles").select("id,name").in("id",known);if(!error)extra=data||[]}
   const nameFor=uid=>uid===user.id?"You":findPerson(uid)?.name||extra.find(x=>x.id===uid)?.name||"Student";
-  $("group-members").innerHTML=allMembers.map(m=>`<span class="tag">${esc(nameFor(m.user_id))} · ${esc(m.status)}</span>`).join(" ");
+  const ownerId=myGroups.find(g=>g.id===id)?.owner_id;
+  $("group-members").innerHTML=allMembers.map(m=>`<div class="session-card" style="padding:9px 0;align-items:center"><div class="session-info"><strong>${esc(nameFor(m.user_id))}</strong> <span class="tag">${esc(m.user_id===ownerId?"Owner":m.status)}</span></div>${user.id===ownerId&&m.user_id!==ownerId?`<button type="button" class="btn danger small" data-group-remove="${esc(m.user_id)}">Remove</button>`:""}</div>`).join("");
+  $("group-members").querySelectorAll("[data-group-remove]").forEach(b=>b.addEventListener("click",async()=>{
+   const memberId=b.dataset.groupRemove;
+   if(!confirm(`Remove ${nameFor(memberId)} from this group?`))return;
+   b.disabled=true;const status=$("group-member-status");status.textContent="Removing member…";
+   try{const {db}=await verifiedAccount();const {error}=await db.from("study_group_members").delete().eq("group_id",id).eq("user_id",memberId);if(error)throw error;status.textContent="✓ Member removed.";await loadGroupDetail(id)}catch(err){status.textContent="Could not remove member: "+err.message;b.disabled=false}
+  }));
   const chat=$("group-chat-history"),nearBottom=chat.scrollHeight-chat.scrollTop-chat.clientHeight<70;
   const html=(messages.data||[]).map(m=>`<div class="chat-bubble ${m.sender_id===user.id?"mine":""}"><strong>${esc(nameFor(m.sender_id))}</strong><div>${esc(m.body)}</div><div class="chat-time">${esc(new Date(m.created_at).toLocaleString())}</div></div>`).join("");
   if(chat.innerHTML!==html)chat.innerHTML=html||'<p class="muted">Start the conversation!</p>';
@@ -659,6 +671,20 @@ async function loadGroupDetail(id,silent=false){
   if(!silent)$("group-chat-status").textContent="";
  }catch(err){if(request!==groupDetailRequest)return;$("group-chat-status").textContent="Could not load group: "+(err.message||"Unknown error");console.error("Group details failed",err)}finally{groupDetailBusy=false}
 }
+$("group-settings-form").addEventListener("submit",async e=>{
+ e.preventDefault();const group=myGroups.find(g=>g.id===activeGroupId),msg=$("group-settings-status"),btn=$("group-settings-save");
+ if(!group||group.owner_id!==groupMe())return;
+ const name=$("group-edit-name").value.trim(),subject=$("group-edit-subject").value.trim();
+ if(!name||!subject){msg.textContent="Group name and subject are required.";return}
+ btn.disabled=true;msg.textContent="Saving changes…";
+ try{const {db}=await verifiedAccount();const {error}=await db.from("study_groups").update({name,subject}).eq("id",group.id);if(error)throw error;group.name=name;group.subject=subject;$("group-detail-name").textContent=name;$("group-detail-subject").textContent=subject;renderGroups();msg.textContent="✓ Group details updated."}catch(err){msg.textContent="Could not update group: "+err.message}finally{btn.disabled=false}
+});
+$("group-leave").addEventListener("click",async()=>{
+ const group=myGroups.find(g=>g.id===activeGroupId),msg=$("group-settings-status");if(!group||group.owner_id===groupMe())return;
+ if(!confirm("Leave this group? You will lose access to its chat and study schedule."))return;
+ const btn=$("group-leave");btn.disabled=true;msg.textContent="Leaving group…";
+ try{const {db,user}=await verifiedAccount();const {error}=await db.from("study_group_members").delete().eq("group_id",group.id).eq("user_id",user.id);if(error)throw error;closeGroup();await loadGroups();groupStatus("✓ You left the group.")}catch(err){msg.textContent="Could not leave group: "+err.message}finally{btn.disabled=false}
+});
 $("group-add-btn").addEventListener("click",async()=>{
  const id=$("group-add-member").value,group=myGroups.find(g=>g.id===activeGroupId),msg=$("group-member-status");
  if(!id||!group||group.owner_id!==groupMe()||!connected(id)){msg.textContent="Choose a mutual match.";return}
