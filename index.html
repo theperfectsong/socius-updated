@@ -749,7 +749,7 @@ $("group-session-form").addEventListener("submit",async e=>{
    const next=[];
    for(const like of incoming){
     const matched=sent.has(like.liker_id);
-    next.push({id:"like:"+like.liker_id,title:matched?"You have a match!":"Someone liked your profile",description:matched?`You and ${noticeName(like.liker_id)} liked each other.`:`${noticeName(like.liker_id)} liked your profile.`,when:like.created_at,icon:matched?"💚":"♡",target:matched?"connections":"discover"});
+    next.push({id:"like:"+like.liker_id,title:matched?"You have a match!":"Someone liked your profile",description:matched?`You and ${noticeName(like.liker_id)} matched with each other.`:`${noticeName(like.liker_id)} liked your profile.`,when:like.created_at,icon:matched?"💚":"♡",target:matched?"connections":"discover"});
    }
    for(const m of messagesResult.data||[])next.push({id:"message:"+m.id,title:"New message",description:`${noticeName(m.sender_id)} sent you a message.`,when:m.created_at,icon:"✉",target:"messages",peer:m.sender_id});
    for(const x of sessionsResult.data||[]){
