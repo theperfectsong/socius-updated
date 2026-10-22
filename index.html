@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Socius — Find your study people</title>
+<title>StudySwipe — Find your study people</title>
 <style>
 :root{--bg:#b6a269;--side:#eeece4;--card:#fff;--green:#234e38;--green2:#1a3c2b;--text:#1f2937;--muted:#6b7280;--border:#d1d5db;--soft:#e2dfd3;--gold:#d6b36a;--danger:#a33b3b}
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
@@ -46,7 +46,7 @@ input,textarea,select{width:100%;padding:12px;border:1px solid var(--border);bor
 @media(max-width:760px){body{display:block}aside{width:100%;min-height:auto;padding:14px;gap:14px;border-right:0;border-bottom:1px solid var(--border)}.logo{margin:0 0 12px 3px}.sidebar-footer{display:none}nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.nav-btn{padding:10px;font-size:.9rem}main{max-height:none;padding:24px 15px}.grid{grid-template-columns:1fr}.stat-row{grid-template-columns:repeat(3,minmax(0,1fr))}.stat{padding:11px}.connection-card,.session-card{flex-direction:column}.connection-card .btn-row,.session-card .btn-row{width:100%}.connection-card .btn,.session-card .btn{flex:1}}
 @media(max-width:390px){.stat-row{grid-template-columns:1fr}.stat{display:flex;align-items:center;justify-content:space-between}.stat strong{font-size:1.2rem}}
 
-/* Secure-account entry screen: matches Socius green-and-cream palette */
+/* Secure-account entry screen: matches StudySwipe green-and-cream palette */
 body.auth-locked > aside,body.auth-locked > main{display:none!important}
 #auth-screen{display:none;min-height:100vh;width:100%;background:radial-gradient(circle at 15% 20%,#e4eadf 0,transparent 34%),var(--bg);padding:28px 18px;align-items:center;justify-content:center}
 body.auth-locked #auth-screen{display:flex}
@@ -73,10 +73,10 @@ body.auth-locked #auth-screen{display:flex}
 </style>
 </head>
 <body class="auth-locked">
-<div id="auth-screen" aria-label="Socius student account access">
+<div id="auth-screen" aria-label="StudySwipe student account access">
  <div class="auth-shell">
   <div class="auth-intro">
-   <div class="auth-mark">socius <span>✳</span></div>
+   <div class="auth-mark">StudySwipe <span>✳</span></div>
    <div><h1>Your people.<br>Your progress.</h1><p>Find tutors, study partners, and a little more confidence in every class.</p></div>
    <div class="auth-note">✧ A little help. A big difference.<br>Made for students who learn better together.</div>
   </div>
@@ -92,7 +92,7 @@ body.auth-locked #auth-screen{display:flex}
     <div class="form-group"><label for="auth-email">College email</label><input id="auth-email" type="email" autocomplete="email" placeholder="name@school.edu" required></div>
     <div class="form-group" id="auth-password-group"><label for="auth-password">Password</label><input id="auth-password" type="password" minlength="8" autocomplete="current-password" placeholder="At least 8 characters" required></div>
     <div class="form-group auth-hidden" id="auth-confirm-group"><label for="auth-confirm">Confirm password</label><input id="auth-confirm" type="password" autocomplete="new-password" placeholder="Repeat your password"></div>
-    <button class="btn" id="auth-submit" type="submit">Log in to Socius</button>
+    <button class="btn" id="auth-submit" type="submit">Log in to StudySwipe</button>
    </form>
    <div id="auth-feedback" class="auth-feedback" role="status" aria-live="polite"></div>
    <div style="text-align:center"><button class="auth-inline" id="auth-forgot" type="button">Forgot password?</button></div>
@@ -103,7 +103,7 @@ body.auth-locked #auth-screen{display:flex}
 
 <aside>
  <div>
-  <div class="logo">socius <span>✳</span></div>
+  <div class="logo">StudySwipe <span>✳</span></div>
   <nav aria-label="Main navigation">
    <button class="nav-btn" data-view="discover">◈ Discover</button>
    <button class="nav-btn" data-view="connections">♡ My connections <span id="connection-count"></span></button>
@@ -139,7 +139,7 @@ body.auth-locked #auth-screen{display:flex}
     <div class="btn-row"><button class="btn" type="submit">Save profile</button><button class="btn secondary" type="button" id="reset-profile">Reset profile</button></div><div id="save-success" class="message" role="status"></div>
    </form>
   </div>
-  <p class="muted" style="font-size:.85rem">Your profile is saved securely to your Socius account in Supabase when you select Save profile.</p>
+  <p class="muted" style="font-size:.85rem">Your profile is saved securely to your StudySwipe account in Supabase when you select Save profile.</p>
  </section>
  <section id="view-discover" class="view">
   <h1>Discover your study people.</h1><p class="subtitle">One profile at a time. Swipe left to like someone and swipe right to pass.</p>
@@ -219,10 +219,10 @@ const defaultState={
 let state=loadState();
 const $=id=>document.getElementById(id);
 function loadState(){
- try{const saved=localStorage.getItem(STORAGE_KEY);if(saved){const parsed=JSON.parse(saved);return {...structuredClone(defaultState),...parsed,profile:{...defaultState.profile,...(parsed.profile||{})},people:Array.isArray(parsed.people)?parsed.people:[],connections:Array.isArray(parsed.connections)?parsed.connections:[],sessions:Array.isArray(parsed.sessions)?parsed.sessions:[],likes:Array.isArray(parsed.likes)?parsed.likes:[],swiped:Array.isArray(parsed.swiped)?parsed.swiped:[],swipeHistory:Array.isArray(parsed.swipeHistory)?parsed.swipeHistory:[]}}}catch(e){console.warn("Could not load saved Socius data",e)}
+ try{const saved=localStorage.getItem(STORAGE_KEY);if(saved){const parsed=JSON.parse(saved);return {...structuredClone(defaultState),...parsed,profile:{...defaultState.profile,...(parsed.profile||{})},people:Array.isArray(parsed.people)?parsed.people:[],connections:Array.isArray(parsed.connections)?parsed.connections:[],sessions:Array.isArray(parsed.sessions)?parsed.sessions:[],likes:Array.isArray(parsed.likes)?parsed.likes:[],swiped:Array.isArray(parsed.swiped)?parsed.swiped:[],swipeHistory:Array.isArray(parsed.swipeHistory)?parsed.swipeHistory:[]}}}catch(e){console.warn("Could not load saved StudySwipe data",e)}
  return structuredClone(defaultState);
 }
-function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));return true}catch(e){console.warn("Could not save Socius demo data",e);return false}}
+function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));return true}catch(e){console.warn("Could not save StudySwipe demo data",e);return false}}
 function esc(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]))}
 function list(value){return String(value||"").split(",").map(x=>x.trim().toLowerCase()).filter(Boolean)}
 function initials(name){return String(name||"?").trim().charAt(0).toUpperCase()||"?"}
@@ -266,9 +266,9 @@ $("profile-form").addEventListener("submit",async e=>{
   state.profile=p;
   saveState(); // Retains current demo feature compatibility only.
   renderProfile();
-  $("save-success").textContent="✓ Profile saved to your Socius account!";
+  $("save-success").textContent="✓ Profile saved to your StudySwipe account!";
  }catch(err){
-  console.error("Socius profile save failed:",err);
+  console.error("StudySwipe profile save failed:",err);
   $("save-success").textContent="Could not save profile: "+(err.message||"Unknown error");
  }finally{button.disabled=false}
 });
@@ -300,7 +300,7 @@ async function loadRealStudents(){
   state.people=[];
   renderDiscover();
   status.textContent="Could not load profiles: "+(err.message||"Unknown error")+". Check the profiles SELECT policy in Supabase.";
-  console.error("Socius Discover load failed",err);
+  console.error("StudySwipe Discover load failed",err);
  }
 }
 $("refresh-students").addEventListener("click",()=>void loadRealStudents());
@@ -390,7 +390,7 @@ async function swipePerson(id,action){
    $("swipe-feedback").textContent=`You passed on ${p.name}. Here's the next student.`;
   }
  }catch(err){
-  console.error("Socius swipe failed",err);
+  console.error("StudySwipe swipe failed",err);
   $("swipe-feedback").textContent="Could not save swipe: "+(err.message||"Unknown error");
  }finally{
   matchingBusy=false;$("swipe-like").disabled=false;$("swipe-pass").disabled=false;
@@ -759,7 +759,7 @@ $("group-session-form").addEventListener("submit",async e=>{
    notifications=next.sort((a,b)=>new Date(b.when)-new Date(a.when)).slice(0,200);
    renderNotifications();
    if(!silent)$("notification-status").textContent=`${notifications.length} notification${notifications.length===1?"":"s"} found.`;
-  }catch(err){if(request!==notificationsRequest||owner!==notificationOwner)return;$("notification-status").textContent="Could not load notifications: "+(err.message||"Unknown error");console.error("Socius notifications failed",err)}
+  }catch(err){if(request!==notificationsRequest||owner!==notificationOwner)return;$("notification-status").textContent="Could not load notifications: "+(err.message||"Unknown error");console.error("StudySwipe notifications failed",err)}
  }
  $("refresh-notifications").addEventListener("click",()=>void loadNotifications());
  $("read-notifications").addEventListener("click",()=>{const seen=seenNotices();notifications.forEach(n=>seen.add(n.id));saveSeenNotices(seen);renderNotifications();$("notification-status").textContent="All current notifications marked as read on this browser."});
@@ -823,7 +823,7 @@ state.connections=[];state.likes=[];window.sociusCurrentUserId=null;fillForm();s
    $("auth-confirm").required=next==="signup"||next==="recover";
    $("auth-password").required=next!=="forgot";
    $("auth-password").autocomplete=(next==="signup"||next==="recover")?"new-password":"current-password";
-   const headings={login:["Welcome back.","Sign in with your college email to continue.","Log in to Socius"],signup:["Let's get started.","Create your Socius student account.","Create account"],forgot:["Reset your password.","We'll email you a password reset link.","Send reset email"],recover:["Choose a new password.","Enter and confirm your new password.","Save new password"]};
+   const headings={login:["Welcome back.","Sign in with your college email to continue.","Log in to StudySwipe"],signup:["Let's get started.","Create your StudySwipe student account.","Create account"],forgot:["Reset your password.","We'll email you a password reset link.","Send reset email"],recover:["Choose a new password.","Enter and confirm your new password.","Save new password"]};
    $("auth-heading").textContent=headings[next][0];$("auth-subheading").textContent=headings[next][1];$("auth-submit").textContent=headings[next][2];
    $("auth-forgot").textContent=next==="login"?"Forgot password?":"Back to log in";
   }
@@ -862,7 +862,7 @@ state.connections=[];state.likes=[];window.sociusCurrentUserId=null;fillForm();s
      if(error)throw error;
      if(data.session){await db.auth.signOut();}
      document.body.classList.add("auth-locked");
-     switchMode("login");notice("Account created! Check your college email and click the verification link. You cannot access Socius until your email is confirmed.");
+     switchMode("login");notice("Account created! Check your college email and click the verification link. You cannot access StudySwipe until your email is confirmed.");
     }else if(mode==="login"){
      const {data,error}=await db.auth.signInWithPassword({email,password});
      if(error)throw error;
