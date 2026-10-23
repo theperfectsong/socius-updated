@@ -238,6 +238,32 @@ input:not([type="checkbox"]):not([type="radio"]),textarea,select,
 }
 #notification-list .notice-item:first-child{border-top:0}
 
+
+/* StudySwipe: simplify nested borders inside an open study group.
+   Retain the outer group card, management panel, chat panel, and schedule inputs. */
+#group-detail .group-member-row,
+#group-detail .group-session-card,
+#group-detail .session-card,
+#group-detail .chat-bubble,
+#group-detail .tag,
+#group-detail .group-check,
+#group-detail #group-session-requests {
+  border: 0;
+}
+#group-detail .group-member-row + .group-member-row,
+#group-detail .session-card + .session-card {
+  border-top: 1px solid #d9ded6;
+}
+/* Preserve the requested green outlines on these larger sections. */
+#group-detail,
+#group-detail > .card,
+#group-detail #group-chat-history,
+#group-detail #group-session-date,
+#group-detail #group-session-time,
+#group-detail #group-session-place,
+#group-detail #group-session-topic {
+  border: 2px solid #234f3e;
+}
 </style>
 </head>
 <body class="auth-locked">
