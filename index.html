@@ -264,6 +264,15 @@ input:not([type="checkbox"]):not([type="radio"]),textarea,select,
 #group-detail #group-session-topic {
   border: 2px solid #234f3e;
 }
+
+/* Secure account settings */
+#account-settings-entry{width:100%;text-align:left;cursor:pointer;font:inherit;color:inherit;background:transparent;border:0;padding:5px;border-radius:10px;display:flex;align-items:center;gap:10px}
+#account-settings-entry:hover{background:#dce6d6}
+#account-settings-entry:focus-visible{outline:3px solid #234f3e;outline-offset:2px}
+#view-account-settings .card{max-width:720px}
+#view-account-settings input[readonly]{background:#f1f1e9;color:#111}
+.settings-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;margin:18px 0}
+.settings-toggle input{min-height:auto;width:20px;height:20px}
 </style>
 </head>
 <body class="auth-locked">
@@ -281,6 +290,7 @@ input:not([type="checkbox"]):not([type="radio"]),textarea,select,
     <button class="auth-tab active" id="auth-login-tab" type="button">Log in</button>
     <button class="auth-tab" id="auth-signup-tab" type="button">Create account</button>
    </div>
+   <form id="studyswipe-mfa-login" class="auth-hidden" style="margin:14px 0"><h3>Authenticator verification</h3><p>Enter the 6-digit code from your authenticator app to finish signing in.</p><div class="form-group"><label for="studyswipe-mfa-login-code">Authentication code</label><input id="studyswipe-mfa-login-code" autocomplete="one-time-code" inputmode="numeric" maxlength="6"></div><button class="btn" type="submit">Verify and sign in</button><p class="message" id="studyswipe-mfa-login-message"></p></form>
    <form id="auth-form">
     <div class="form-group auth-hidden" id="auth-name-group"><label for="auth-name">Your name</label><input id="auth-name" autocomplete="name" maxlength="60" placeholder="Your first name"></div>
     <div class="form-group"><label for="auth-email">College email</label><input id="auth-email" type="email" autocomplete="email" placeholder="name@cpcc.edu or name@email.cpcc.edu" required></div>
@@ -308,7 +318,7 @@ input:not([type="checkbox"]):not([type="radio"]),textarea,select,
    <button class="nav-btn active" data-view="profile">◎ My profile</button>
   </nav>
  </div>
- <div class="sidebar-footer"><p>✧ A little help. A big difference.</p><small class="muted">Your next “I get it now” moment starts here.</small><div class="user-mini"><div class="avatar" id="sidebar-avatar">L</div><div><strong id="sidebar-name">Student</strong><div class="muted" style="font-size:.75rem">College student</div></div></div></div>
+ <div class="sidebar-footer"><p>✧ A little help. A big difference.</p><small class="muted">Your next “I get it now” moment starts here.</small><button type="button" class="user-mini" id="account-settings-entry" title="Open secure account settings"><div class="avatar" id="sidebar-avatar">L</div><div><strong id="sidebar-name">Student</strong><div class="muted" style="font-size:.75rem">College student · Account settings ↗</div></div></button></div>
 </aside>
 <main>
  <section id="view-profile" class="view active">
@@ -397,6 +407,34 @@ input:not([type="checkbox"]):not([type="radio"]),textarea,select,
     <form id="chat-form" class="chat-compose"><input id="chat-input" maxlength="2000" placeholder="Write a message…" aria-label="Message" disabled required><button id="chat-send" class="btn" type="submit" disabled>Send</button></form>
     <div id="chat-status" class="message" role="status" aria-live="polite"></div>
    </div>
+  </div>
+ </section>
+
+ <section id="view-account-settings" class="view">
+  <h1>Account settings</h1><p class="subtitle">Your personal details and account security.</p>
+  <div class="card" id="settings-gate">
+   <h2>Verify it's you</h2><p>Enter your current password before viewing account settings.</p>
+   <form id="settings-verify-form"><div class="form-group"><label for="settings-current-password">Current password</label><input type="password" id="settings-current-password" autocomplete="current-password" required></div><div class="btn-row"><button class="btn" type="submit">Unlock account settings</button><button type="button" class="btn secondary" id="settings-gate-cancel">Cancel</button></div></form>
+   <p class="message" id="settings-gate-message" role="status"></p>
+  </div>
+  <div id="settings-content" class="hidden">
+   <div class="card"><h2>Account information</h2>
+    <div class="form-group"><label>Email</label><input id="settings-email" readonly></div>
+    <div class="form-group"><label>Password</label><input type="text" value="••••••••••••" readonly aria-label="Password hidden"></div>
+    <button type="button" class="btn secondary" id="settings-reset-password">Change password via email</button><p class="muted" style="margin-top:8px">We'll email a secure password-reset link, just like Forgot password.</p>
+   </div>
+   <div class="card"><h2>Personal details</h2><form id="settings-details-form">
+    <div class="form-group"><label for="settings-gender">Gender</label><select id="settings-gender"><option value="">Prefer not to say</option><option value="Woman">Woman</option><option value="Man">Man</option><option value="Nonbinary">Nonbinary</option><option value="Self-describe">Self-describe</option></select></div>
+    <div class="form-group" id="settings-gender-other-wrap" style="display:none"><label for="settings-gender-other">How would you describe your gender?</label><input id="settings-gender-other" maxlength="80"></div>
+    <div class="form-group"><label for="settings-phone">Phone number (optional)</label><input type="tel" id="settings-phone" autocomplete="tel" placeholder="+1 704 555 0123" maxlength="25"></div>
+    <button class="btn" type="submit">Save personal details</button>
+   </form></div>
+   <div class="card"><h2>Two-factor authentication</h2><p>Use an authenticator app for an additional sign-in code. This setting requires a successful setup before it turns on.</p>
+    <label class="settings-toggle"><input type="checkbox" id="settings-2fa-toggle"> Enable authenticator-app 2FA</label>
+    <div id="settings-mfa-setup" class="hidden"><p>Scan this QR code in an authenticator app, then enter its six-digit code.</p><img id="settings-mfa-qr" alt="Authenticator enrollment QR code" style="width:180px;max-width:100%;display:block;margin:12px 0"><div class="form-group"><label for="settings-mfa-code">6-digit code</label><input id="settings-mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div><button type="button" class="btn" id="settings-mfa-confirm">Verify and enable</button></div>
+    <p class="message" id="settings-status" role="status"></p>
+   </div>
+   <button type="button" class="btn secondary" id="settings-lock">Lock settings</button>
   </div>
  </section>
 </main>
@@ -991,6 +1029,71 @@ $("group-session-form").addEventListener("submit",async e=>{
    try{await loadRealStudents();await loadSharedSessions();await loadNotifications();await loadGroups()}catch(err){console.error("Could not initialize matching, sessions or notifications",err)}
  };
 
+
+// Account settings: gated by fresh password verification; do not store passwords.
+let settingsUnlocked=false, pendingMfaFactor=null, settingsMfaFactor=null;
+function settingsMsg(message){$("settings-status").textContent=message}
+function settingsLock(){settingsUnlocked=false;pendingMfaFactor=null;$("settings-gate").classList.remove("hidden");$("settings-content").classList.add("hidden");$("settings-current-password").value="";$("settings-mfa-code").value="";$("settings-mfa-setup").classList.add("hidden")}
+window.studySwipeLockSettings=settingsLock;
+$("account-settings-entry").addEventListener("click",()=>{settingsLock();nav("account-settings");$("settings-current-password").focus()});
+$("settings-gate-cancel").addEventListener("click",()=>{settingsLock();nav("profile")});
+$("settings-lock").addEventListener("click",()=>{settingsLock();nav("profile")});
+$("settings-gender").addEventListener("change",()=>{$("settings-gender-other-wrap").style.display=$("settings-gender").value==="Self-describe"?"block":"none"});
+async function settingsRefresh(){
+ const {db,user}=await verifiedAccount();
+ $("settings-email").value=user.email||"";
+ $("settings-gender").value=user.user_metadata?.studyswipe_gender||"";
+ $("settings-gender-other").value=user.user_metadata?.studyswipe_gender_other||"";
+ $("settings-phone").value=user.user_metadata?.studyswipe_phone||"";
+ $("settings-gender-other-wrap").style.display=$("settings-gender").value==="Self-describe"?"block":"none";
+ const {data,error}=await db.auth.mfa.listFactors();if(error)throw error;
+ settingsMfaFactor=(data?.totp||[]).find(f=>f.status==="verified")||null;
+ $("settings-2fa-toggle").checked=!!settingsMfaFactor;
+ settingsMsg(settingsMfaFactor?"Authenticator-app 2FA is enabled.":"Authenticator-app 2FA is off.");
+}
+$("settings-verify-form").addEventListener("submit",async e=>{
+ e.preventDefault();const msg=$("settings-gate-message");msg.textContent="Checking password…";
+ try{
+  const {db,user}=await verifiedAccount();const pw=$("settings-current-password").value;
+  const {error}=await db.auth.signInWithPassword({email:user.email,password:pw});if(error)throw new Error("Incorrect password. Please try again.");
+  settingsUnlocked=true;$("settings-current-password").value="";await settingsRefresh();
+  $("settings-gate").classList.add("hidden");$("settings-content").classList.remove("hidden");msg.textContent="";
+ }catch(err){settingsUnlocked=false;msg.textContent=err.message||"Could not verify password."}
+});
+$("settings-details-form").addEventListener("submit",async e=>{
+ e.preventDefault();if(!settingsUnlocked)return;
+ const gender=$("settings-gender").value,phone=$("settings-phone").value.trim();
+ if(phone&&!/^\+?[0-9 ()-]{7,25}$/.test(phone)){settingsMsg("Enter a valid phone number or leave it blank.");return}
+ try{const {db}=await verifiedAccount();const {error}=await db.auth.updateUser({data:{studyswipe_gender:gender,studyswipe_gender_other:gender==="Self-describe"?$("settings-gender-other").value.trim():"",studyswipe_phone:phone}});if(error)throw error;settingsMsg("Personal details saved.")}
+ catch(err){settingsMsg("Could not save: "+err.message)}
+});
+$("settings-reset-password").addEventListener("click",async()=>{
+ if(!settingsUnlocked)return;
+ try{const {db,user}=await verifiedAccount();const {error}=await db.auth.resetPasswordForEmail(user.email,{redirectTo:location.origin+location.pathname});if(error)throw error;settingsMsg("Password reset email sent. Check your inbox.")}
+ catch(err){settingsMsg("Could not send reset email: "+err.message)}
+});
+$("settings-2fa-toggle").addEventListener("change",async()=>{
+ if(!settingsUnlocked)return;
+ const toggle=$("settings-2fa-toggle");toggle.disabled=true;
+ try{const {db}=await verifiedAccount();
+  if(toggle.checked){
+   const {data,error}=await db.auth.mfa.enroll({factorType:"totp",friendlyName:"StudySwipe authenticator"});if(error)throw error;
+   pendingMfaFactor=data.id;$("settings-mfa-qr").src=data.totp.qr_code;$("settings-mfa-setup").classList.remove("hidden");settingsMsg("Complete verification to enable 2FA.");
+  }else{
+   if(!settingsMfaFactor)throw new Error("No verified factor found.");
+   const {error}=await db.auth.mfa.unenroll({factorId:settingsMfaFactor.id});if(error)throw error;
+   settingsMfaFactor=null;settingsMsg("Two-factor authentication disabled.");
+  }
+ }catch(err){toggle.checked=!!settingsMfaFactor;settingsMsg("Two-factor change failed: "+err.message)}finally{toggle.disabled=false}
+});
+$("settings-mfa-confirm").addEventListener("click",async()=>{
+ if(!pendingMfaFactor)return;
+ try{const {db}=await verifiedAccount();const {data:challenge,error:challengeError}=await db.auth.mfa.challenge({factorId:pendingMfaFactor});if(challengeError)throw challengeError;
+ const {error}=await db.auth.mfa.verify({factorId:pendingMfaFactor,challengeId:challenge.id,code:$("settings-mfa-code").value.trim()});if(error)throw error;
+ pendingMfaFactor=null;$("settings-mfa-setup").classList.add("hidden");await settingsRefresh();settingsMsg("Two-factor authentication enabled. Keep your authenticator app available for future logins.");
+ }catch(err){settingsMsg("Verification failed: "+err.message)}
+});
+
 state.connections=[];state.likes=[];window.sociusCurrentUserId=null;fillForm();setProfileReady(false);renderConnections();renderSessions();renderProfile();renderDiscover();
 })();
 </script>
@@ -1040,11 +1143,27 @@ state.connections=[];state.likes=[];window.sociusCurrentUserId=null;fillForm();s
     notice("Please check your college email and click the verification link before logging in.");
     return false;
    }
+   const {data:aal,error:aalError}=await db.auth.mfa.getAuthenticatorAssuranceLevel();
+   if(aalError)throw aalError;
+   if(aal?.nextLevel==="aal2" && aal?.currentLevel!=="aal2"){
+    const {data:factors,error:factorsError}=await db.auth.mfa.listFactors();if(factorsError)throw factorsError;
+    const factor=(factors?.totp||[]).find(f=>f.status==="verified");
+    if(factor){window.studySwipePendingLoginFactor=factor.id;document.body.classList.add("auth-locked");$("auth-form").classList.add("auth-hidden");$("studyswipe-mfa-login").classList.remove("auth-hidden");notice("Enter your authenticator code to continue.");return false}
+   }
+   $("auth-form").classList.remove("auth-hidden");$("studyswipe-mfa-login").classList.add("auth-hidden");
    if(currentUserId!==user.id){currentUserId=user.id;await window.sociusSwitchAccount(user)}
    document.body.classList.remove("auth-locked");
    return true;
   }
-  function lock(){currentUserId=null;document.body.classList.add("auth-locked");switchMode("login");}
+  function lock(){currentUserId=null;window.studySwipeLockSettings?.();document.body.classList.add("auth-locked");$("auth-form").classList.remove("auth-hidden");$("studyswipe-mfa-login").classList.add("auth-hidden");switchMode("login");}
+  $("studyswipe-mfa-login").addEventListener("submit",async e=>{
+   e.preventDefault();const msg=$("studyswipe-mfa-login-message");msg.textContent="Verifying…";
+   try{const factorId=window.studySwipePendingLoginFactor;if(!factorId)throw new Error("Sign in again to request a new code.");
+    const {data:challenge,error:challengeError}=await db.auth.mfa.challenge({factorId});if(challengeError)throw challengeError;
+    const {error}=await db.auth.mfa.verify({factorId,challengeId:challenge.id,code:$("studyswipe-mfa-login-code").value.trim()});if(error)throw error;
+    $("studyswipe-mfa-login-code").value="";window.studySwipePendingLoginFactor=null;msg.textContent="";await revealVerifiedUser();
+   }catch(err){msg.textContent=err.message||"Incorrect code."}
+  });
   $("auth-form").addEventListener("submit",async e=>{
    e.preventDefault();
    if(!db){notice("Supabase is not available. Check your internet connection and try again.",true);return}
