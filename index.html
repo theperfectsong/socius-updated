@@ -367,7 +367,7 @@ input:not([type="checkbox"]):not([type="radio"]),textarea,select,
    <div class="btn-row" style="justify-content:center;margin-bottom:18px"><button class="btn secondary" id="undo-swipe">Undo last swipe</button></div>
    <div id="discover-empty" class="placeholder hidden"><strong>You're all caught up!</strong>You've seen all available student profiles for these filters. Try refreshing or changing your filters.</div>
   </div>
-   <div class="card" style="margin-top:20px"><h2>Real student profiles</h2><p class="muted" style="line-height:1.5;margin-bottom:14px">Discover loads profiles saved by other students in Supabase. Likes and mutual connections are saved in Supabase. Refresh to see new matches. Study plans are shared through Supabase.</p><button class="btn secondary" id="refresh-students" type="button">↻ Refresh students</button><div id="discover-status" class="message" role="status" aria-live="polite"></div></div>
+   <div class="card" style="margin-top:20px"><h2>Real student profiles</h2><p class="muted" style="line-height:1.5;margin-bottom:14px">Discover loads profiles saved by other students in Supabase. Likes and mutual connections are saved in Supabase. Refresh to see new matches. Study plans are shared through Supabase.</p><button class="btn secondary" id="refresh-students" type="button">↻ Refresh students</button> <button class="btn secondary" id="rediscover-students" type="button">↺ Show previously viewed students</button><div id="discover-status" class="message" role="status" aria-live="polite"></div></div>
  </section>
  <section id="view-connections" class="view">
   <h1>My connections</h1><p class="subtitle">Students you’ve connected with for tutoring and study sessions.</p>
@@ -429,11 +429,7 @@ input:not([type="checkbox"]):not([type="radio"]),textarea,select,
     <div class="form-group"><label for="settings-phone">Phone number (optional)</label><input type="tel" id="settings-phone" autocomplete="tel" placeholder="+1 704 555 0123" maxlength="25"></div>
     <button class="btn" type="submit">Save personal details</button>
    </form></div>
-   <div class="card"><h2>Two-factor authentication</h2><p>Use an authenticator app for an additional sign-in code. This setting requires a successful setup before it turns on.</p>
-    <label class="settings-toggle"><input type="checkbox" id="settings-2fa-toggle"> Enable authenticator-app 2FA</label>
-    <div id="settings-mfa-setup" class="hidden"><p>Scan this QR code in an authenticator app, then enter its six-digit code.</p><img id="settings-mfa-qr" alt="Authenticator enrollment QR code" style="width:180px;max-width:100%;display:block;margin:12px 0"><div class="form-group"><label for="settings-mfa-code">6-digit code</label><input id="settings-mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div><button type="button" class="btn" id="settings-mfa-confirm">Verify and enable</button></div>
-    <p class="message" id="settings-status" role="status"></p>
-   </div>
+   <p class="message" id="settings-status" role="status"></p>
    <button type="button" class="btn secondary" id="settings-lock">Lock settings</button>
   </div>
  </section>
@@ -536,6 +532,19 @@ async function loadRealStudents(){
  }
 }
 $("refresh-students").addEventListener("click",()=>void loadRealStudents());
+$("rediscover-students").addEventListener("click",async()=>{
+ const button=$("rediscover-students");
+ button.disabled=true;
+ try{
+  // Reset only the local Discover history; do not delete any Supabase likes or matches.
+  state.swiped=[];state.swipeHistory=[];
+  saveState();
+  $("filter-campus").value="";$("filter-class").value="";$("filter-type").value="all";
+  await loadRealStudents();
+  $("discover-status").textContent += " Previously viewed profiles are eligible to appear again unless you currently like them.";
+ }catch(err){$("discover-status").textContent="Could not reset Discover history: "+(err.message||"Unknown error")}
+ finally{button.disabled=false}
+});
 function filteredDiscoverPeople(){
  const campus=$("filter-campus").value,subject=$("filter-class").value.trim().toLowerCase(),type=$("filter-type").value;
  let people=state.people.filter(p=>!p.isSelf&&!state.swiped.includes(p.id));
@@ -1031,9 +1040,9 @@ $("group-session-form").addEventListener("submit",async e=>{
 
 
 // Account settings: gated by fresh password verification; do not store passwords.
-let settingsUnlocked=false, pendingMfaFactor=null, settingsMfaFactor=null;
+let settingsUnlocked=false;
 function settingsMsg(message){$("settings-status").textContent=message}
-function settingsLock(){settingsUnlocked=false;pendingMfaFactor=null;$("settings-gate").classList.remove("hidden");$("settings-content").classList.add("hidden");$("settings-current-password").value="";$("settings-mfa-code").value="";$("settings-mfa-setup").classList.add("hidden")}
+function settingsLock(){settingsUnlocked=false;$("settings-gate").classList.remove("hidden");$("settings-content").classList.add("hidden");$("settings-current-password").value="";}
 window.studySwipeLockSettings=settingsLock;
 $("account-settings-entry").addEventListener("click",()=>{settingsLock();nav("account-settings");$("settings-current-password").focus()});
 $("settings-gate-cancel").addEventListener("click",()=>{settingsLock();nav("profile")});
@@ -1046,10 +1055,7 @@ async function settingsRefresh(){
  $("settings-gender-other").value=user.user_metadata?.studyswipe_gender_other||"";
  $("settings-phone").value=user.user_metadata?.studyswipe_phone||"";
  $("settings-gender-other-wrap").style.display=$("settings-gender").value==="Self-describe"?"block":"none";
- const {data,error}=await db.auth.mfa.listFactors();if(error)throw error;
- settingsMfaFactor=(data?.totp||[]).find(f=>f.status==="verified")||null;
- $("settings-2fa-toggle").checked=!!settingsMfaFactor;
- settingsMsg(settingsMfaFactor?"Authenticator-app 2FA is enabled.":"Authenticator-app 2FA is off.");
+
 }
 $("settings-verify-form").addEventListener("submit",async e=>{
  e.preventDefault();const msg=$("settings-gate-message");msg.textContent="Checking password…";
@@ -1071,27 +1077,6 @@ $("settings-reset-password").addEventListener("click",async()=>{
  if(!settingsUnlocked)return;
  try{const {db,user}=await verifiedAccount();const {error}=await db.auth.resetPasswordForEmail(user.email,{redirectTo:location.origin+location.pathname});if(error)throw error;settingsMsg("Password reset email sent. Check your inbox.")}
  catch(err){settingsMsg("Could not send reset email: "+err.message)}
-});
-$("settings-2fa-toggle").addEventListener("change",async()=>{
- if(!settingsUnlocked)return;
- const toggle=$("settings-2fa-toggle");toggle.disabled=true;
- try{const {db}=await verifiedAccount();
-  if(toggle.checked){
-   const {data,error}=await db.auth.mfa.enroll({factorType:"totp",friendlyName:"StudySwipe authenticator"});if(error)throw error;
-   pendingMfaFactor=data.id;$("settings-mfa-qr").src=data.totp.qr_code;$("settings-mfa-setup").classList.remove("hidden");settingsMsg("Complete verification to enable 2FA.");
-  }else{
-   if(!settingsMfaFactor)throw new Error("No verified factor found.");
-   const {error}=await db.auth.mfa.unenroll({factorId:settingsMfaFactor.id});if(error)throw error;
-   settingsMfaFactor=null;settingsMsg("Two-factor authentication disabled.");
-  }
- }catch(err){toggle.checked=!!settingsMfaFactor;settingsMsg("Two-factor change failed: "+err.message)}finally{toggle.disabled=false}
-});
-$("settings-mfa-confirm").addEventListener("click",async()=>{
- if(!pendingMfaFactor)return;
- try{const {db}=await verifiedAccount();const {data:challenge,error:challengeError}=await db.auth.mfa.challenge({factorId:pendingMfaFactor});if(challengeError)throw challengeError;
- const {error}=await db.auth.mfa.verify({factorId:pendingMfaFactor,challengeId:challenge.id,code:$("settings-mfa-code").value.trim()});if(error)throw error;
- pendingMfaFactor=null;$("settings-mfa-setup").classList.add("hidden");await settingsRefresh();settingsMsg("Two-factor authentication enabled. Keep your authenticator app available for future logins.");
- }catch(err){settingsMsg("Verification failed: "+err.message)}
 });
 
 state.connections=[];state.likes=[];window.sociusCurrentUserId=null;fillForm();setProfileReady(false);renderConnections();renderSessions();renderProfile();renderDiscover();
